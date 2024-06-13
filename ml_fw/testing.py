@@ -35,4 +35,6 @@ f_df = pd.read_hdf(td)
 
 f_dat, y_dat = dio.create(f_df,**df_cols)
 
-s_dat = dio.feat_shift(f_dat,t_col='DateTime')
+s_dat, d_col = dio.feat_shift(f_dat,t_col='DateTime',periods=[10],drop_orig=True)
+
+

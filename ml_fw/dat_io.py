@@ -121,13 +121,72 @@ def feat_shift(s_dat: pd.DataFrame,
                t_col='DateTime',
                periods: list[int] = [5],
                unit: str = 'min',
-               drop_orig: bool = False) -> pd.DataFrame:
+               tolerance: pd.Timedelta = None,
+               drop_orig: bool = False,
+               drop_na: bool = True) -> pd.DataFrame:
+    """
+    
+    Function to shift feature data in time so 
+    that time lags can be applied to feature
+    vectors.
 
+    Parameters
+    ----------
+    s_dat : pd.DataFrame
+        A dataframe with the features.
+        The defauld is 'pd.DataFrame'
+    t_col : TYPE, optional
+        The column or index where time is located. This is used
+        to shift the data.
+        The default is 'DateTime'. 'index' or 0 will use the
+        index as the time array
+    periods : list[int], optional
+        A list integer peiods to shift the data. The unit of the shift
+        can be set using 'unit'
+        The default is [5].
+    unit : str, optional
+        The unit of the time shift periods.
+        Should be of similar types as pd.Timedelta.
+        The default is 'min'.
+    tolerance : pd.Timedelta, optional
+        The max differnce between the orignal time index and time shifted
+        index to rematch variables. If this is not set then the time column
+        is used to determine a nominal resolution 'res' in seconds and tolerance 
+        is set as (res/2)+1.
+        The default is None.
+    drop_orig : bool, optional
+        In some cases the orignal data is not required, only the time shifted
+        data. This will drop the original data columns
+        The default is False.
+    drop_na : bool, optional
+        The time shift creates a number of NaN at the begining of the
+        new DataFrame, this drops those. The default is True.
+
+    Raises
+    ------
+    TypeError
+        If keywords are not correct type.
+    KeyError
+        If the time column can't be found in the DataFrame.
+
+    Returns
+    -------
+    s_dat : TYPE
+        A dataframe containing time shifted feature columns.
+
+    """
+
+    # get the index so we can
+    # add it back at the end
+    s_ind = s_dat.index.copy()
+    
     # if the time is the index
     # reset the index so time is a column
     if t_col == 'index' or t_col == 0:
         s_dat.reset_index('DateTime')
         t_col = 'DateTime'
+    
+    
     
     if isinstance(periods,str):
         periods = [periods]
@@ -136,13 +195,24 @@ def feat_shift(s_dat: pd.DataFrame,
         
     # check if our time column exists
     try:
-        t_dat = s_dat[t_col]
+        t_dat = s_dat[t_col].copy()
     except:
         print(f'{t_col} cannot be found')
         raise KeyError(t_col)
 
+    # use the time column to get a nominal
+    # resolution of the timeseries
+    # if tolerance isn't defined this is
+    # used as tolerance
+    res = t_dat.reset_index(drop=True).diff().mode()[0].seconds
+    
+    if not tolerance:
+        tolerance = pd.Timedelta(res/2+1,unit='seconds')
+    
+
     #get the data columns
-    d_col = s_dat.columns.to_list().remove(t_col)
+    d_col = s_dat.columns.to_list()
+    d_col.remove('DateTime')
     # get the data
     r_dat = s_dat.copy().drop(axis=1,columns=t_col)
     # begin shifting the data
@@ -151,11 +221,20 @@ def feat_shift(s_dat: pd.DataFrame,
         r_suf = f' {i} {unit}'
         s_dat = pd.merge_asof(s_dat,r_dat, on=t_col,
                               direction='nearest',
-                              suffixes = ('',r_suf)
-                              )
-        # drop the new time column as it's not needed
-        #s_dat = s_dat.drop(axis=1,columns=t_col+r_suf)
+                              suffixes = ('',r_suf),
+                              tolerance=tolerance)
 
+
+    # add the original index back in
+    s_dat = s_dat.set_index(s_ind)
+    
+    # drop the original columns
+    if drop_orig:
+        s_dat = s_dat.drop(columns=d_col)
+        
+    # return only indexes with 
+    if drop_na:
+        s_dat = s_dat.dropna()
     
     return s_dat
     

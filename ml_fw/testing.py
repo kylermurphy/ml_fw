@@ -8,7 +8,9 @@ Created on Wed Jun 12 10:03:38 2024
 import pandas as pd
 
 import dat_io as dio
+import ml_mod as ml
 
+from sklearn.ensemble import HistGradientBoostingRegressor as hgbr
 
 
 # target data
@@ -35,6 +37,30 @@ f_df = pd.read_hdf(td)
 
 f_dat, y_dat = dio.create(f_df,**df_cols)
 
-s_dat, d_col = dio.feat_shift(f_dat,t_col='DateTime',periods=[10],drop_orig=True)
+grid_params = dict(
+    learning_rate=[0.05, 0.1, 0.2],
+    max_depth=[2, 5, 10, None],
+    max_iter=[100,300,500,750,1000],
+    min_samples_leaf=[1, 5, 10, 20])
 
+grid_params = dict(
+    learning_rate=[0.05,  0.2],
+    max_depth=[10, None],
+    max_iter=[750,1000],
+    min_samples_leaf=[10, 20])
 
+gridcv_k = dict(cv=3, 
+                verbose=4,
+                scoring='neg_mean_absolute_error', 
+                n_jobs=6, 
+                return_train_score=True,
+                refit=True)
+
+est = gbr_ls = hgbr(loss="squared_error")
+                                             
+
+model = ml.train(f_dat.drop(columns='DateTime'),
+                 y_dat,
+                 est, 
+                 grid_params=grid_params, 
+                 grid_kwargs=gridcv_k)

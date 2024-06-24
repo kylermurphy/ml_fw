@@ -36,6 +36,7 @@ f_df = pd.read_hdf(td)
 
 
 f_dat, y_dat = dio.create(f_df,**df_cols)
+y_dat = y_dat*10**12
 
 grid_params = dict(
     learning_rate=[0.05, 0.1, 0.2],
@@ -51,10 +52,10 @@ grid_params = dict(
 
 gridcv_k = dict(cv=3, 
                 verbose=4,
-                scoring='neg_mean_absolute_error', 
+                scoring=['neg_mean_absolute_error','r2'], 
                 n_jobs=6, 
                 return_train_score=True,
-                refit=True)
+                refit=False)
 
 est = gbr_ls = hgbr(loss="squared_error")
                                              

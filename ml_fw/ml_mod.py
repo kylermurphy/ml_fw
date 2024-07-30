@@ -59,8 +59,13 @@ def train(f_dat: pd.DataFrame,
         # combine them using root mean square 
         # sqrt(average(sum(score**2)))
         if 'best_estimator_' in est_tune.__dict__:
+            print('Using model determined best estimator.')
             est_fit = est_tune.best_estimator_
         else:
+            print('''
+                  Using linear combination of scorers to
+                  determine best estimator
+                  ''')
             dist = list()
             scorers = list(est_tune.scorer_.keys())
             average = ['mean_train_','mean_test_']

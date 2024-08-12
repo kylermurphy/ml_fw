@@ -143,7 +143,8 @@ def feat_shift(s_dat: pd.DataFrame,
     periods : list[int], optional
         A list integer peiods to shift the data. The unit of the shift
         can be set using 'unit'
-        The default is [5].
+        The default is [5], which will shift the data 5 minutes.
+        An arbitrary number of shifts can be suplied.
     unit : str, optional
         The unit of the time shift periods.
         Should be of similar types as pd.Timedelta.

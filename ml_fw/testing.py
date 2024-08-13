@@ -8,7 +8,9 @@ Created on Wed Jun 12 10:03:38 2024
 import pandas as pd
 
 import data_io as dio
+from ml_fw import profile as pro
 import ml_mod as ml
+
 
 from sklearn.ensemble import HistGradientBoostingRegressor as hgbr
 
@@ -38,30 +40,48 @@ f_df = pd.read_hdf(td)
 f_dat, y_dat = dio.create(f_df,**df_cols)
 y_dat = y_dat*10**12
 
-grid_params = dict(
-    learning_rate=[0.05, 0.1, 0.2],
-    max_depth=[2, 5, 10, None],
-    max_iter=[100,300,500,750,1000],
-    min_samples_leaf=[1, 5, 10, 20])
+###
+# Test profiling
+###
 
-grid_params = dict(
-    learning_rate=[0.05,  0.2],
-    max_depth=[10, None],
-    max_iter=[750,1000],
-    min_samples_leaf=[10, 20])
+x = pro.cor_matrix(f_dat.drop(columns='DateTime'),y_dat)
 
-gridcv_k = dict(cv=3, 
-                verbose=4,
-                scoring=['neg_mean_absolute_error','r2'], 
-                n_jobs=6, 
-                return_train_score=True,
-                refit=False)
+y = pro.cor_matrix(f_dat=['B','AE','SYM_H index',], 
+                   y_dat=['dens_x','dens_mean'], cor_dat=f_df)
 
-est = gbr_ls = hgbr(loss="squared_error")
+z = pro.cor_matrix(f_dat=['B','AE','SYM_H index','storm'], 
+                   y_dat=['dens_x','dens_mean'],
+                   cor_dat=f_df, 
+                   cat_dat=['storm'])
+
+
+###
+# Test fitting
+###
+# grid_params = dict(
+#     learning_rate=[0.05, 0.1, 0.2],
+#     max_depth=[2, 5, 10, None],
+#     max_iter=[100,300,500,750,1000],
+#     min_samples_leaf=[1, 5, 10, 20])
+
+# grid_params = dict(
+#     learning_rate=[0.05,  0.2],
+#     max_depth=[10, None],
+#     max_iter=[750,1000],
+#     min_samples_leaf=[10, 20])
+
+# gridcv_k = dict(cv=3, 
+#                 verbose=4,
+#                 scoring=['neg_mean_absolute_error','r2'], 
+#                 n_jobs=6, 
+#                 return_train_score=True,
+#                 refit=False)
+
+# est = gbr_ls = hgbr(loss="squared_error")
                                              
 
-model = ml.train(f_dat.drop(columns='DateTime'),
-                 y_dat,
-                 est, 
-                 grid_params=grid_params, 
-                 grid_kwargs=gridcv_k)
+# model = ml.train(f_dat.drop(columns='DateTime'),
+#                  y_dat,
+#                  est, 
+#                  grid_params=grid_params, 
+#                  grid_kwargs=gridcv_k)

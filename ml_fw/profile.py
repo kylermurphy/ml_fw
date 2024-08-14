@@ -27,6 +27,7 @@ def cor_matrix(f_dat: pd.DataFrame | list,
             and isinstance(cor_dat, pd.DataFrame):
                 f_col = f_dat
                 y_col = y_dat
+                cor_dat = cor_dat[f_col+y_col]
                 
     # else if both f_dat and y_dat are pandas
     # combine them into one data frame to do the correlations
@@ -70,36 +71,62 @@ def cor_matrix(f_dat: pd.DataFrame | list,
         cor_plot = cor_plot.rename(columns={y_col[0]:'All'})
     
     # parse the categorical data if it's passed
+    # --
     # if it's a list the list contains the names
     # of the categorical variables, these are assumed to 
     # be binary and correlations are calculated for
-    # column == 1 and column /= 0
+    # column == 1 and column != 1
+    # or the list contains a callable
     if isinstance(cat_dat, list):
-
-        for cat_val in cat_dat:
-            cat_m = cor_dat[cat_val] == 1
-            cor_1 = cor_dat[cat_m][f_col+y_col].corr(method=cor_meth,
-                                                 numeric_only=True)[y_col]
-            cor_2 = cor_dat[~cat_m][f_col+y_col].corr(method=cor_meth,
-                                                 numeric_only=True)[y_col]
-            if len(y_col) > 1:
-                cor_1 = cor_1.add_prefix(f'{cat_val}==1:')
-                cor_2 = cor_2.add_prefix(f'{cat_val}!=1:')
+        cat_dict = dict()
+        cat_call = 0
+        for lv in cat_dat:
+            if isinstance(lv,str):
+                cat_dict[lv] = lv
             else:
-                cor_1 = cor_1.rename(columns={y_col[0]:f'{cat_val} == 1'})
-                cor_2 = cor_2.rename(columns={y_col[0]:f'{cat_val} != 1'})
-            
-            cor_plot = cor_plot.merge(cor_1,
-                                      left_index=True,
-                                     right_index=True)
-            cor_plot = cor_plot.merge(cor_2,how='left',
-                                      left_index=True,
-                                      right_index=True)
-            
-            
-            
-            
-    # if it is a dictionary then the key is the column
-    # and the value is the condition
+                cat_dict[f'call{cat_call:02}'] = lv
+                cat_call = cat_call+1
+    elif isinstance(cat_dat, dict):
+        cat_dict = cat_dat  
+        
+                
+    if cat_dat and isinstance(cat_dict,dict):  
+        for ck, cv in cat_dict.items():
+            if isinstance(cv,str):
+                print(cv)
+                cat_m = cor_dat[cv] == 1
+                cor_1 = cor_dat[cat_m][f_col+y_col].corr(method=cor_meth,
+                                                     numeric_only=False)[y_col]
+                cor_2 = cor_dat[~cat_m][f_col+y_col].dropna().corr(method=cor_meth,
+                                                     numeric_only=False)[y_col]
+                if len(y_col) > 1:  
+                    cor_1 = cor_1.add_prefix(f'{ck}==1:')
+                    cor_2 = cor_2.add_prefix(f'{ck}!=1:')
+                    print(cor_1)
+                    print(cor_2)
+                else:
+                    cor_1 = cor_1.rename(columns={y_col[0]:f'{ck} == 1'})
+                    cor_2 = cor_2.rename(columns={y_col[0]:f'{ck} != 1'})
+                
+                cor_plot = cor_plot.merge(cor_1,
+                                          left_index=True,
+                                          right_index=True)
+                cor_plot = cor_plot.merge(cor_2,how='left',
+                                          left_index=True,
+                                          right_index=True)
+            else:
+                cor_1 = cor_dat.where(cv)[f_col+y_col].corr(method=cor_meth,
+                                                        numeric_only=False)[y_col]
+                if len(y_col) > 1:
+                    print(cor_1)
+                    cor_1 = cor_1.add_prefix(f'{ck}:')
+                else:
+                    cor_1 = cor_1.rename(columns={y_col[0]:f'{ck}'})
+                
+                cor_plot = cor_plot.merge(cor_1,
+                                          left_index=True,
+                                          right_index=True)
+
+
     
     return cor_plot

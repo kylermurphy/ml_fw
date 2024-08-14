@@ -44,15 +44,23 @@ y_dat = y_dat*10**12
 # Test profiling
 ###
 
-x = pro.cor_matrix(f_dat.drop(columns='DateTime'),y_dat)
+# x = pro.cor_matrix(f_dat.drop(columns='DateTime'),y_dat)
 
-y = pro.cor_matrix(f_dat=['B','AE','SYM_H index',], 
-                   y_dat=['dens_x','dens_mean'], cor_dat=f_df)
+# y = pro.cor_matrix(f_dat=['B','AE','SYM_H index',], 
+#                    y_dat=['dens_x','dens_mean'], cor_dat=f_df)
 
 z = pro.cor_matrix(f_dat=['B','AE','SYM_H index','storm'], 
+                    y_dat=['dens_x','dens_mean'],
+                    cor_dat=f_df, 
+                    cat_dat=['storm'])
+
+ae_f = lambda x: x['AE'] > 500
+sym_h = lambda x: x['SYM_H index'] < -50
+storm = lambda x: x['storm'] == 1
+w = pro.cor_matrix(f_dat=['B','AE','SYM_H index','storm'], 
                    y_dat=['dens_x','dens_mean'],
                    cor_dat=f_df, 
-                   cat_dat=['storm'])
+                   cat_dat={'storm f':storm, 'storm':'storm'})
 
 
 ###

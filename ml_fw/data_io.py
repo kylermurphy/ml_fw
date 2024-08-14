@@ -134,7 +134,7 @@ def feat_shift(s_dat: pd.DataFrame,
     ----------
     s_dat : pd.DataFrame
         A dataframe with the features.
-        The defauld is 'pd.DataFrame'
+        The default is 'pd.DataFrame'
     t_col : TYPE, optional
         The column or index where time is located. This is used
         to shift the data.

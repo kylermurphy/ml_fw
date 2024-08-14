@@ -16,7 +16,8 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                cor_dat: pd.DataFrame = None,
                cor_ind: str = None,
                cat_dat: list | dict = None,
-               cor_meth='pearson') -> pd.DataFrame:
+               cor_meth='pearson', 
+               y_drop: bool = True) -> pd.DataFrame:
    
     # if both f_dat and y_dat are lists then they
     # contain the columns names of the data to 
@@ -72,11 +73,23 @@ def cor_matrix(f_dat: pd.DataFrame | list,
     
     # parse the categorical data if it's passed
     # --
-    # if it's a list the list contains the names
-    # of the categorical variables, these are assumed to 
-    # be binary and correlations are calculated for
-    # column == 1 and column != 1
-    # or the list contains a callable
+    # categorical variables can be strings of column names
+    # - str elements
+    # if a string assume the categorical variable is binary, 0 or 1
+    # the column is separated into values that ==1 and !=1
+    # and the correlations are calculted
+    # - callables
+    # use the DataFrame.where() function and the passed callable
+    # to mask the data and calculate the correlations
+    #
+    # if a list is passed parse it into a dictionary 
+    # - str elements
+    # key is the str, value is the str
+    #
+    # - callable or non-str elemtents
+    # key is an increasing integer, value is the callable/element
+
+    # create dictionary for categorical varialbes/filtering
     if isinstance(cat_dat, list):
         cat_dict = dict()
         cat_call = 0
@@ -89,11 +102,11 @@ def cor_matrix(f_dat: pd.DataFrame | list,
     elif isinstance(cat_dat, dict):
         cat_dict = cat_dat  
         
-                
+    
+    # calculate the correlations for categorical variables/filtering            
     if cat_dat and isinstance(cat_dict,dict):  
         for ck, cv in cat_dict.items():
             if isinstance(cv,str):
-                print(cv)
                 cat_m = cor_dat[cv] == 1
                 cor_1 = cor_dat[cat_m][f_col+y_col].corr(method=cor_meth,
                                                      numeric_only=False)[y_col]
@@ -102,8 +115,6 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                 if len(y_col) > 1:  
                     cor_1 = cor_1.add_prefix(f'{ck}==1:')
                     cor_2 = cor_2.add_prefix(f'{ck}!=1:')
-                    print(cor_1)
-                    print(cor_2)
                 else:
                     cor_1 = cor_1.rename(columns={y_col[0]:f'{ck} == 1'})
                     cor_2 = cor_2.rename(columns={y_col[0]:f'{ck} != 1'})
@@ -118,7 +129,6 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                 cor_1 = cor_dat.where(cv)[f_col+y_col].corr(method=cor_meth,
                                                         numeric_only=False)[y_col]
                 if len(y_col) > 1:
-                    print(cor_1)
                     cor_1 = cor_1.add_prefix(f'{ck}:')
                 else:
                     cor_1 = cor_1.rename(columns={y_col[0]:f'{ck}'})
@@ -128,5 +138,8 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                                           right_index=True)
 
 
+    
+    if y_drop:
+        cor_plot = cor_plot.drop(y_col)
     
     return cor_plot

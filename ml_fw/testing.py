@@ -6,6 +6,8 @@ Created on Wed Jun 12 10:03:38 2024
 """
 
 import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 import data_io as dio
 from ml_fw import profile as pro
@@ -60,7 +62,12 @@ storm = lambda x: x['storm'] == 1
 w = pro.cor_matrix(f_dat=['B','AE','SYM_H index','storm'], 
                    y_dat=['dens_x','dens_mean'],
                    cor_dat=f_df, 
-                   cat_dat={'storm f':storm, 'storm':'storm'})
+                   cat_dat={'storm walla walla':storm, 'storm':'storm'})
+
+plt.figure(figsize=(8, 8))
+sns.heatmap(w[0:-1].abs(),annot=False, fmt='.2f', cbar_kws={'label':'Abs Correlation - abs(r)'})
+plt.yticks() 
+plt.show()
 
 
 ###

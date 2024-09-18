@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-
+# callables are lambda functions 
+# which can be used to filter the data
 
 # correlation matrix 
 
@@ -87,7 +88,8 @@ def cor_matrix(f_dat: pd.DataFrame | list,
     # key is the str, value is the str
     #
     # - callable or non-str elemtents
-    # key is an increasing integer, value is the callable/element
+    # key is an increasing integer or name of the
+    # callable, value is the callable/element
 
     # create dictionary for categorical varialbes/filtering
     if isinstance(cat_dat, list):

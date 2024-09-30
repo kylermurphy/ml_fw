@@ -58,9 +58,20 @@ def boxplot_vx(x_dat: pd.DataFrame | list,
             x_val = x_dat
             y_val = y_dat
     
-            
-
+    # create a list for bins the same size as x_col
+    if isinstance(bins,list) and len(bins) == len(x_col):     
+        bin_v = bins
+    else: 
+        bin_v = np.zeros(len(x_col))
+        bin_v[:] = bins
         
+    # create a list for xrange the same size as x_col
+    if isinstance(xrange,list) and len(xrange) == len(x_col):
+        xran = xrange
+    else:
+        xran = [None for x in x_col]
+    
+
         
     # now we want to itterate over the x columns
     # and generate the box plot as binned statistic
@@ -72,9 +83,11 @@ def boxplot_vx(x_dat: pd.DataFrame | list,
        
     box_idx = {}
     
-    for idx in x_col:
-        print(idx)
+    for idx, bn, xr in zip(x_col, bin_v, xran):
         # calculate the statistics as a function of idx
+        xr = None if len(xr) != 2 else xr
+
+        # reshape the arrays
         try:
             x = x_val[idx].to_numpy().squeeze()
         except:
@@ -85,17 +98,19 @@ def boxplot_vx(x_dat: pd.DataFrame | list,
         except:
             x = x_val.to_numpy().squeeze()
         
-        mean, x_edge, _ = stats.binned_statistic(x, y, bins=bins, 
-                                                 range=xrange, 
+        # calculate stats
+        mean, x_edge, _ = stats.binned_statistic(x, y, bins=bn, 
+                                                 range=xr, 
                                                  statistic=np.nanmean)
-        median, _, _ = stats.binned_statistic(x, y,bins=bins, 
-                                              range=xrange, 
+        median, _, _ = stats.binned_statistic(x, y,bins=bn, 
+                                              range=xr, 
                                               statistic=np.nanmedian)
-        low_q, _, _ = stats.binned_statistic(x, y, bins=bins, 
-                                             range=xrange, statistic=lq_nan)
-        up_q, _, _ = stats.binned_statistic(x, y, bins=bins, 
-                                            range=xrange, statistic=uq_nan)
+        low_q, _, _ = stats.binned_statistic(x, y, bins=bn, 
+                                             range=xr, statistic=lq_nan)
+        up_q, _, _ = stats.binned_statistic(x, y, bins=bn, 
+                                            range=xr, statistic=uq_nan)
         
+        # calculate x location of the stats
         x_cen = (x_edge[0:-1]+[x_edge[1:]])/2.
         x_cen = x_cen.squeeze()
         x_wid = x_edge[1]-x_edge[0]

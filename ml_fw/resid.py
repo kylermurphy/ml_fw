@@ -21,7 +21,124 @@ def boxplot_vx(x_dat: pd.DataFrame | list,
                box_meth: bool | dict = True,
                bins: int | list = 10,
                xrange: list[tuple[float, float]] | None = None, 
-               whisker: float = 1.5):
+               whisker: float = 1.5) -> dict:
+    """
+    
+
+    Parameters
+    ----------
+    x_dat : pd.DataFrame | list
+        A pandas DataFrame containing the data for binning. The y-data within
+        the binned is then used to calculate statistics and derive box and 
+        whisker values for each bin.
+        
+        The DataFrame can have more the one column. Each column will be binned
+        (see bins) and box/whisker data returned.
+        
+        If x_dat is a list then the list contains the column names which
+        correspond to the binning data in box_dat DataFrame.
+    y_dat : pd.DataFrame | list
+        A pandas DataFrame containing the y-data which will be use to calculate
+        the box and whisker statistics for each bin from x_dat.
+        
+        If y_dat is a list it contains the column name for box_dat that
+        contains the y-data with which box/whisker values are derived.
+        
+        y_dat should be a single columnd DataFrame or single valued list.
+        
+    box_dat : pd.DataFrame, optional
+        The default is None.
+        
+        A pandas DataFrame continaing the x-data and y-data for which values
+        are binned and subsequently used to derive box/whisker values,
+        respectively. 
+        
+        If provided, x_dat and y_dat should be lists specifying the column
+        names of the x-data for binning and the y-data for deriving box/whisker
+        values. 
+        
+    box_meth : bool | dict, optional
+        The default is True.
+        
+        Currently a place holder which may be used to change the statistics
+        returned for the box/whisker values.
+        
+    bins : int | list, optional
+        The default is 10.
+        
+        The number of bins with which the x-data is seprated into when deriving
+        statistics. It defines the number of equal-width bins in the given 
+        range.
+        
+        If bins is a list it should have the same number of elements or 
+        columns as x_dat. Each value then specifies the bins for the 
+        corresponding x data.
+        
+        If the number of elements is not the same bins is set to None and the
+        default value of 10 is used
+        
+        Used in call to scipy.stats.binned_statistic
+        
+    xrange : list[tuple[float, float]] | None, optional
+        The default is None.
+        
+        The lower and upper range of the bins. If not provided, range is simply
+        (x.min(), x.max()). Values outside the range are ignored.
+        
+        If xrange is a list each element should be a two element list which
+        corresponds to the min and max for the corresponding element of x_col.
+        In this case the length of xrange should be the same as x_col or the
+        number of columns of x_col (depending on type)
+    
+        Used in call to scipy.stats.binned_statistic
+        
+    whisker : float, optional
+        The default is 1.5.
+        
+        The position of the whiskers.
+
+        If a float, the lower whisker is at the lowest datum above 
+        Q1 - whis*(Q3-Q1), and the upper whisker at the highest datum below 
+        Q3 + whis*(Q3-Q1), where Q1 and Q3 are the first and third quartiles. 
+        The default value of whis = 1.5 corresponds to Tukey's original 
+        definition of boxplots.
+
+    Returns
+    -------
+    box_idx : Dictionary
+        A dictionary for each of x_col specifing the values for
+        the box/whisker plot.
+        
+        If x_dat is a DataFrame the keys are the column names else they 
+        are the values of the x_dat list. 
+        
+        box_idx['key']
+
+        Each value is a subsequent dictionary containing the box/whisker data
+        for plotting.
+
+        box_idx['key']['box_stats'] - a list of dictionaries containgin the
+        box/whisker statistics for bin of the corresponding x_dat ('key').
+        
+        The required keys for a box plot (from matplotlib.axes.Axes.bxp) are:
+            - med: Median (scalar).
+            - q1, q3: First & third quartiles (scalars).
+            - whislo, whishi: Lower & upper whisker positions (scalars).
+        Optional keys which are used are:
+            - mean: Mean (scalar). Needed if showmeans=True.
+            - fliers: Data beyond the whiskers (array-like). 
+            Needed if showfliers=True. Always empty
+        
+        box_idx['key']['x_edge'] - an array of dtype float which returns
+        the bin edges for the corresponding x_dat ('key'). Returned from
+        scipy.stats.binned_statistic
+        
+        box_idx['key']['x_centre'] - an array of dtype float containing
+        the centre x value for each bin from box_idx['key']['x_edge'].
+        
+        box_idx['key']['x_width'] - the width of a x-bin.
+
+    """
     
     # x dat - dataframe of x data to bin by or list for box_dat
     # y dat - dataframe of y data to calculate stats on or list for box_dat

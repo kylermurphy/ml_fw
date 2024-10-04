@@ -169,16 +169,16 @@ def boxplot_vx(x_dat: pd.DataFrame | list,
             y_val = y_dat
     
     # create a list for bins the same size as x_col
-    if isinstance(xrange,list) and len(xrange) == 2 and len(x_col) == 1:
-        xran = [xrange]
-    elif isinstance(bins,list) and len(bins) == len(x_col):     
+    if isinstance(bins,list) and len(bins) == len(x_col):     
         bin_v = bins
     else: 
         bin_v = np.zeros(len(x_col))
         bin_v[:] = bins
         
     # create a list for xrange the same size as x_col
-    if isinstance(xrange,list) and len(xrange) == len(x_col):
+    if isinstance(xrange,list) and len(xrange) == 2 and len(x_col) == 1:
+        xran = [xrange]
+    elif isinstance(xrange,list) and len(xrange) == len(x_col):
         xran = xrange
     else:
         xran = [None for x in x_col]

@@ -24,6 +24,38 @@ def boxplot_metvx(x_dat: pd.DataFrame | list,
                   bins: int | list = 10,
                   xrange: list[tuple[float, float]] | None = None, 
                   whisker: float = 1.5):
+    """
+    
+
+    Parameters
+    ----------
+    x_dat : pd.DataFrame | list
+        DESCRIPTION.
+    y_true : pd.DataFrame | list
+        DESCRIPTION.
+    y_mod : pd.DataFrame | list
+        DESCRIPTION.
+    box_dat : pd.DataFrame, optional
+        DESCRIPTION. The default is None.
+    box_metric : str, optional
+        DESCRIPTION. The default is None.
+    kfolds : int, optional
+        DESCRIPTION. The default is 1000.
+    kfrac : int, optional
+        DESCRIPTION. The default is 0.5.
+    bins : int | list, optional
+        DESCRIPTION. The default is 10.
+    xrange : list[tuple[float, float]] | None, optional
+        DESCRIPTION. The default is None.
+    whisker : float, optional
+        DESCRIPTION. The default is 1.5.
+
+    Returns
+    -------
+    box_idx : TYPE
+        DESCRIPTION.
+
+    """
 
         
     # get data for processing    

@@ -1,4 +1,4 @@
 # -*- coding: utf-8 -*-
 
-from .boxplot_vx import *
-from .boxplot_metvx import *
+from ._boxplot_vx import *
+from ._boxplot_metvx import *

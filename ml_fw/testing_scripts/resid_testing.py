@@ -60,7 +60,8 @@ ax[0].set_xlabel('AE')
 # loop through the dictionary to plot all box_plots
 pc = [cc, [0,0,1]]
 for (key, value), ap, bc, in zip(box_dat.items(), ax[1:], pc):
-    print(key)
+    print(f'Plotting {key}')
+    
     plt_box = box_dat[key]
     y_val = plt_box['box_stats']
     x_val = plt_box['x_centre']
@@ -77,7 +78,7 @@ for (key, value), ap, bc, in zip(box_dat.items(), ax[1:], pc):
     ap.set_xlabel(key)
 
     
-box2 = insp.boxplot_vx(['AE'], ['resid'], dat,bins=20, xrange=aerange)  
+box2 = insp.boxplot_vx(['AE'], ['resid'], dat,bins=20, xrange=aerange, whisker=0)  
 
 fig2, ax2 = plt.subplots(1,1, figsize=(8,9))
 

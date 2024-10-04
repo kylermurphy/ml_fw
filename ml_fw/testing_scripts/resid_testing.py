@@ -10,7 +10,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-from ml_fw import inspect as resid
+from ml_fw import inspect as insp
 
 
 showmean=True
@@ -29,7 +29,7 @@ dat['resid'] = dat['400kmDensity']-dat['400kmDensity_pred']
 x_dat = ['AE','SYM_H index']
 y_dat = ['resid']
 
-box_dat = resid.boxplot_vx(dat[x_dat], dat[y_dat],whisker=whisker, 
+box_dat = insp.boxplot_vx(dat[x_dat], dat[y_dat],whisker=whisker, 
                            bins=[aebins,sbins], xrange=[aerange,srange])
 
 fig, ax = plt.subplots(3,1, figsize=(8,9))

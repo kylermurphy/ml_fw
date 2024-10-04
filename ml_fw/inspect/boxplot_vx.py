@@ -169,7 +169,9 @@ def boxplot_vx(x_dat: pd.DataFrame | list,
             y_val = y_dat
     
     # create a list for bins the same size as x_col
-    if isinstance(bins,list) and len(bins) == len(x_col):     
+    if isinstance(xrange,list) and len(xrange) == 2 and len(x_col) == 1:
+        xran = [xrange]
+    elif isinstance(bins,list) and len(bins) == len(x_col):     
         bin_v = bins
     else: 
         bin_v = np.zeros(len(x_col))
@@ -193,7 +195,7 @@ def boxplot_vx(x_dat: pd.DataFrame | list,
     
     for idx, bn, xr in zip(x_col, bin_v, xran):
         # calculate the statistics as a function of idx
-        xr = None if len(xr) != 2 else xr
+        xr = xr if isinstance(xr,list) and len(xr) == 2 else None
 
         # reshape the arrays
         try:
@@ -204,7 +206,7 @@ def boxplot_vx(x_dat: pd.DataFrame | list,
         try:
             y = y_val[y_col].to_numpy().squeeze()
         except:
-            x = x_val.to_numpy().squeeze()
+            y = y_val.to_numpy().squeeze()
         
         # calculate stats
         mean, x_edge, _ = stats.binned_statistic(x, y, bins=bn, 

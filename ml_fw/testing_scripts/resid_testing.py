@@ -10,7 +10,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 
-from ml_fw import resid as resid
+from ml_fw import inspect as resid
 
 
 showmean=True

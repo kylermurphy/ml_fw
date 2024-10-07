@@ -25,9 +25,8 @@ def boxplot_vx(x_dat: pd.DataFrame | list,
                bins: int | list = 10,
                xrange: list[tuple[float, float]] | None = None, 
                whisker: float = 1.5) -> dict:
-    """
+    """Calculate boxplot like statistics of y as a function of x.
     
-
     Parameters
     ----------
     x_dat : pd.DataFrame | list
@@ -140,9 +139,8 @@ def boxplot_vx(x_dat: pd.DataFrame | list,
         the centre x value for each bin from box_idx['key']['x_edge'].
         
         box_idx['key']['x_width'] - the width of a x-bin.
-
     """
-
+    # get data for processing
     if isinstance(x_dat, list) \
         and isinstance(y_dat, list) \
             and isinstance(box_dat, pd.DataFrame):

@@ -229,6 +229,7 @@ def boxplot_metvx(x_dat: pd.DataFrame | list,
         print('Using Mean Square Error Metric')
         met = lambda y_true, y_pred: metrics.mean_squared_error(y_true, y_pred)
     else:
+        print('Using passed metric')
         met = box_metric
     
     # create a list for bins the same size as x_col

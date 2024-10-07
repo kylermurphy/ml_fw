@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 
-should rename this inspecting as it's not just residuals
+should rename this inspecting as it's not just residuals.
 
 Created on Wed Sep 18 11:28:59 2024
 
@@ -25,7 +25,8 @@ def boxplot_vx(x_dat: pd.DataFrame | list,
                bins: int | list = 10,
                xrange: list[tuple[float, float]] | None = None, 
                whisker: float = 1.5) -> dict:
-    """Calculate boxplot like statistics of y as a function of x.
+    """
+    Calculate boxplot like statistics of y as a function of x.
     
     Parameters
     ----------

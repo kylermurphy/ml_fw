@@ -24,7 +24,36 @@ def boxplot_metvx(x_dat: pd.DataFrame | list,
                   bins: int | list = 10,
                   xrange: list[tuple[float, float]] | None = None, 
                   whisker: float = 1.5):
-    """Calculate boxplot like statistics of a metric (using y-t and y-p) vs x.
+    """
+    Calculate boxplot like statistics of a metric (using y-t and y-m) vs x.
+    
+    The data is binned as a function of x. For each bin in x the a fraction of
+    the true and model data are randomly sampled (kfrac). This sample is used
+    to calculte a metric of the data. This is repeated kfolds time to generate
+    a distribution of metric values for that bin. 
+    
+    This distribution is then used to derive stats for a box and whisker plot. 
+    This is repeated for each bin of x. 
+    
+    The metric can be a callable passed to the function, for example: 
+        
+        met = lambda y_true, y_pred: metrics.accuracy_score(y_true, y_pred)
+    or
+        met = lambda y_true, y_pred: metrics.accuracy_score(y_true, y_pred, 
+                                                         normalize=False)
+    
+    and the callable can specify the parameters of the metric. 
+    
+    More examples:
+    - Regression score
+        met = lambda y_true, y_pred: metrics.mean_absolute_error(y_true, 
+                                                                 y_pred)
+                     
+    - Clustering score
+        met = lambda y_true, y_pred: metrics.homogeneity_score(labels_true, 
+                                                               labels_pred)
+        
+    In these cases the callable would be passed using the box_metric keyword.
     
     Parameters
     ----------

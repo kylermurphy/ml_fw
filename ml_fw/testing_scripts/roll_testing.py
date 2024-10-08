@@ -29,5 +29,16 @@ gd = (dat['DateTime'] > sdate) & (dat['DateTime'] <= edate)
 
 rdat = dat[gd].copy()
 
-met_df = insp.rolling_met(rdat,y_true=y_true,y_pred=y_pred,on=on,
-                         roll_metric=met, roll_kwargs=rkwargs)
+#met_df = insp.rolling_met(rdat,y_true=y_true,y_pred=y_pred,on=on,
+#                         roll_metric=met, roll_kwargs=rkwargs)
+
+
+path_dat = "D:\data\Full_Model_Outputs.hdf5"
+dd = pd.read_hdf(path_dat)
+y_t = 'True Class'
+y_p = 'Prediction'
+on = 'index'
+rkwargs = {'window':11,'center':True}
+
+r_met = insp.rolling_met(dd,y_true=y_t,y_pred=y_p,on=on,
+                        roll_kwargs=rkwargs)

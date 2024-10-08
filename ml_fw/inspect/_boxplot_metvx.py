@@ -19,7 +19,7 @@ def boxplot_metvx(x_dat: pd.DataFrame | list,
                   y_mod: pd.DataFrame | list,
                   box_dat: pd.DataFrame = None, 
                   box_metric = None,
-                  kfolds: int = 1000,
+                  kfolds: int = 100,
                   kfrac: int = 0.5, 
                   bins: int | list = 10,
                   xrange: list[tuple[float, float]] | None = None, 
@@ -110,7 +110,7 @@ def boxplot_metvx(x_dat: pd.DataFrame | list,
         used. 
         
     kfolds : int, optional
-        The default is 1000.
+        The default is 100.
         
         For each bin, randomly sample the metric kfolds time to create a 
         distribution. Use this distribution to derive box and whisker stats.

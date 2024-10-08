@@ -32,11 +32,11 @@ def rolling_met(met_dat: pd.DataFrame,
                     # index name
                     if on.upper() == 'INDEX':
                         if not met_dat.index.name:
-                            on='index'
+                            on ='index'
                         else:
-                            on= met_dat.index.name
+                            on = met_dat.index.name
                         
-                        rdat = met_dat.reset_index()
+                        met_dat = met_dat.reset_index()
                     
                     # create a dataframe of only the 
                     # columns we need

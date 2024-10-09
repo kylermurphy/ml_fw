@@ -19,7 +19,87 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                cat_dat: list | dict = None,
                cor_meth='pearson', 
                y_drop: bool = True) -> pd.DataFrame:
-   
+    """
+    Derive correlation matrix of features with target variable.
+
+    Parameters
+    ----------
+    f_dat : pd.DataFrame | list
+        Feature data which is correlated with target data.
+        
+        A pd.DataFrame containing the feature data or a list containing the 
+        column names of the feature data set.
+        
+    y_dat : pd.DataFrame | pd.Series | list
+        Target data which is correlated with feature data
+        
+        A pd.DataFrame, pd.Series, or list which conatins the target dataset.
+        
+        If a list the column name of the target data.
+        
+    cor_dat : pd.DataFrame, optional
+        The default is None.
+        
+        If both y_dat and f_dat are lists then the cor_dat pd.DataFrame
+        contains the feature and target data where the columns correspond to 
+        the list elements of y_dat and f_dat.
+        
+    cor_ind : str, optional
+        The default is None.
+        
+        If cor_ind is passed and f_dat and y_dat are pd.DataFrames then cor_ind
+        contains the column name which is used to join f_dat and y_dat. Else
+        f_dat and y_dat are joined on index.
+        
+    cat_dat : list | dict, optional
+        A list containing the column names which are categorical/binary data or
+        callables that can be used to filter the data. 
+        
+        If the list element is a string then it contains the column name of 
+        a binary categorical data and two sets of correlations are performed. 
+        One on a subset of the data where the categorical variable is 0 and the
+        other where the variable is 1. 
+        
+        If the list elements is a callable then the callable is a function that
+        can be used to filter either the feature or target data. These can be 
+        lambda functions used to filter a pd.DataFrame on a particular column.
+        For example, the feature data has a columns 'AE' and 'SymH', then:
+            
+            ae_f = lambda x: x['AE'] > 500
+            sym_f = lambda x: x['SymH'] < -50
+            cat_dat = [ae_f, sym_f]
+        
+        Here the correlation pd.DataFrame will be filtered to look at the 
+        correlations of the features with the target when the AE column is 
+        greater then 500. Another set of correlations will be calculated when
+        SymH is less then -50. 
+        
+        If cat_dat is a dictionary the values contain strings or callables 
+        similar to if it was a list. The keys are used to name the columns of
+        the returned correlation matrix. 
+        
+        If cat_dat is a list the correlations are returned with column names
+        'call_xx' where xx is an integer.   
+        
+    cor_meth : TYPE, optional
+        The default is 'pearson'.
+        
+        The type of correlation used in pd.DataFrame.corr
+        
+    y_drop : bool, optional
+       The default is True.
+       
+       Drop the y_dat from row of the correlation matrix as it is always 1.
+
+    Returns
+    -------
+    cor_plot : pd.DataFrame
+        A pd.DataFrame whose rows are the correlations of the features with
+        the target variable. 
+        
+        Additional columns are added to account for correlations provided via
+        the cat_dat keyword.
+    """
     # if both f_dat and y_dat are lists then they
     # contain the columns names of the data to 
     # do the correlation matrix for

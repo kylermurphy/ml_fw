@@ -9,13 +9,13 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-import data_io as dio
+from ml_fw import data_io as dio
 from ml_fw import profile as pro
-from ml_fw import resid as resid
-import ml_mod as ml
+
+#import ml_mod as ml
 
 
-from sklearn.ensemble import HistGradientBoostingRegressor as hgbr
+#from sklearn.ensemble import HistGradientBoostingRegressor as hgbr
 
 
 # target data
@@ -30,12 +30,12 @@ df_cols = {
     'lt_col': ['lon'],
     }
 
-df_cols = {
-    'feat_col': ['AE','lat'],
-    'y_col': ['dens_x'],
-    't_col': ['DateTime'],
-    'lt_col': None,
-    }
+#df_cols = {
+#    'feat_col': ['AE','lat'],
+#    'y_col': ['dens_x'],
+#    't_col': ['DateTime'],
+#    'lt_col': None,
+#    }
 
 f_df = pd.read_hdf(td)
 

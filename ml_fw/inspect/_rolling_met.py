@@ -18,7 +18,7 @@ def rolling_met(met_dat: pd.DataFrame,
                 y_pred: str = 'y_pred',
                 on: str = 'DateTime', 
                 roll_kwargs: dict = None,
-                roll_metric: list | dict = None):
+                roll_metric: list | dict = None) -> pd.DataFrame:
     """
     Calculate a rolling metric.
 
@@ -84,7 +84,6 @@ def rolling_met(met_dat: pd.DataFrame,
         If roll_metric is dictionary the names of the columns are the
         dictionary keys. 
     """
-    
     # if strings are passed and met_dat DateFrame
     # then get only the data we need
     if isinstance(y_true, str) \

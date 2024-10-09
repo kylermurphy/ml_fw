@@ -40,6 +40,7 @@ def boxplot_vx(x_dat: pd.DataFrame | list,
         
         If x_dat is a list then the list contains the column names which
         correspond to the binning data in box_dat DataFrame.
+        
     y_dat : pd.DataFrame | list
         A pandas DataFrame containing the y-data which will be use to calculate
         the box and whisker statistics for each bin from x_dat.

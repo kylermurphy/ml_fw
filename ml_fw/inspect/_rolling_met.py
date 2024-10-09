@@ -19,6 +19,71 @@ def rolling_met(met_dat: pd.DataFrame,
                 on: str = 'DateTime', 
                 roll_kwargs: dict = None,
                 roll_metric: list | dict = None):
+    """
+    Calculate a rolling metric.
+
+    Parameters
+    ----------
+    met_dat : pd.DataFrame
+        Pandas DataFrame which contains the observed and predicted data as well
+        as a index or time series which can be used to create a set of rolling
+        windows which are used to derive metrics.
+        
+    y_true : str, optional
+        The default is 'y_true'.
+        
+        The column name which contains the observerd or true values.
+        
+    y_pred : str, optional
+        The default is 'y_pred'.
+        
+        The column name which contains the predicted or modeled values. 
+        
+    on : str, optional
+        The default is 'DateTime'.
+        
+        The used to define the rolling windows.
+        
+        If on='index' then the index of the met_data DataFrame is used.
+        
+    roll_kwargs : dict, optional
+        The default is None.
+        
+        Keywords arguments to be passed to DataFrame.rolling() method. 
+        
+        If nothing is passed the 'on' column is checked if it is datetime like
+        and if true a 60 minute centered rolling window is used.
+        
+        Else a 10 point centred rolling window is used.
+        
+    roll_metric : list | dict, optional
+        The default is None.
+        
+        A callable, list of callables, or dictionary of callables which can 
+        be used to derive a metric from the true and predicted values. 
+        
+        The callables can be lambda functions utilizing metrics from 
+        sklearn.metrics. For example:
+            met = lambda tr, pr: sklearn.metrics.accuracy_score(tr,pr)
+        The labmdas can also be used to set keyword arguments. For example:
+            met = lamba tr, pr: sklearn.metrics.log_loss(tr,pr, normalize=True)
+            
+        If roll_mtric is a list each list element should be metric callable. If
+        it is a dictionary the key should be the name and value a metric 
+        callable. 
+
+    Returns
+    -------
+    rdf : pd.DataFrame
+        A DataFrame containg the values of a rolling metric for each passed
+        callable/metric and the index/DateTime values for each value. 
+        
+        If roll_metric is a list the names of the column are 'Metric XX' where
+        xx is the list element. 
+        
+        If roll_metric is dictionary the names of the columns are the
+        dictionary keys. 
+    """
     
     # if strings are passed and met_dat DateFrame
     # then get only the data we need

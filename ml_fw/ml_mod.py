@@ -18,8 +18,20 @@ def train(f_dat: pd.DataFrame,
           est_kwargs: dict = None,
           grid_params: dict = None,
           grid_kwargs: dict = {}, 
-          grid_ratio: float = 0.3):
+          grid_ratio: float = 0.3, 
+          random_state: int = 17):
 
+    # check the est parameters for random state
+    # if it is none set it to random_state
+    # else set random_state to the est.random_state
+    est_p = estimator.get_params()
+    if 'random_state' in est_p:
+        if not estimator.random_state:
+            estimator.random_state = random_state
+        else:
+            random_state = estimator.random_state
+            
+    
     # if a set of grid parameters
     # has been sent then do a grid 
     # search to fine the best set of parameters
@@ -42,7 +54,8 @@ def train(f_dat: pd.DataFrame,
             print(
                 f'Performing Grid Search using {grid_ratio*100:.2f}% of data')
             x_grid, _, y_grid, _ = train_test_split(f_dat,y_dat, 
-                                                    train_size=grid_ratio)
+                                                    train_size=grid_ratio,
+                                                    random_state=random_state)
             est_tune = tune(estimator, grid_params,x_grid,y_grid, 
                             **grid_kwargs)
         else: 
@@ -83,10 +96,11 @@ def train(f_dat: pd.DataFrame,
             est_fit = estimator.set_params(
                 **est_tune.cv_results_['params'][best_pos])
     
+ 
     # fit the model
     est_fit.fit(f_dat, y_dat.values.ravel())
-    # return the model
     
+    # return the model    
     return est_fit
 
 def tune(estimator, 
@@ -101,8 +115,5 @@ def tune(estimator,
     
     return model_grid
 
-def residuals():
-    
-    
-    return
+
 

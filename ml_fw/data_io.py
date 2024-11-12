@@ -85,6 +85,7 @@ def create(dat: pd.DataFrame,
        for i in log_col:
             try:
                 x_dat[f'log10_{i}'] = np.log10(x_dat[i])
+                x_dat = x_dat.drop(columns=i)
             except:
                 print(f'Could not log column {i}')
     
@@ -124,7 +125,7 @@ def feat_shift(s_dat: pd.DataFrame,
                tolerance: pd.Timedelta = None,
                drop_orig: bool = False,
                drop_na: bool = True) -> pd.DataFrame:
-    """
+    """Time shift features.
     
     Function to shift feature data in time so 
     that time lags can be applied to feature
@@ -176,7 +177,6 @@ def feat_shift(s_dat: pd.DataFrame,
         A dataframe containing time shifted feature columns.
 
     """
-
     # get the index so we can
     # add it back at the end
     s_ind = s_dat.index.copy()
@@ -184,8 +184,9 @@ def feat_shift(s_dat: pd.DataFrame,
     # if the time is the index
     # reset the index so time is a column
     if t_col == 'index' or t_col == 0:
-        s_dat.reset_index('DateTime')
-        t_col = 'DateTime'
+        s_dat = s_dat.reset_index(names='DateTime_idx9')
+        t_col = 'DateTime_idx9'
+        drop_dt = True
     
     
     
@@ -213,7 +214,7 @@ def feat_shift(s_dat: pd.DataFrame,
 
     #get the data columns
     d_col = s_dat.columns.to_list()
-    d_col.remove('DateTime')
+    d_col.remove(t_col)
     # get the data
     r_dat = s_dat.copy().drop(axis=1,columns=t_col)
     # begin shifting the data
@@ -229,6 +230,9 @@ def feat_shift(s_dat: pd.DataFrame,
     # add the original index back in
     s_dat = s_dat.set_index(s_ind)
     
+    if drop_dt:
+        s_dat = s_dat.drop(axis=1,columns=t_col)
+        
     # drop the original columns
     if drop_orig:
         s_dat = s_dat.drop(columns=d_col)

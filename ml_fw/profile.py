@@ -18,6 +18,7 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                cor_ind: str = None,
                cat_dat: list | dict = None,
                cor_meth='pearson', 
+               numeric_only: bool = False,
                y_drop: bool = True) -> pd.DataFrame:
     """
     Derive correlation matrix of features with target variable.
@@ -85,7 +86,12 @@ def cor_matrix(f_dat: pd.DataFrame | list,
         The default is 'pearson'.
         
         The type of correlation used in pd.DataFrame.corr
+    
+    numeric_only : bool, option
+        The defauls is True
         
+        Include only float, int or boolean data.
+    
     y_drop : bool, optional
        The default is True.
        
@@ -145,7 +151,7 @@ def cor_matrix(f_dat: pd.DataFrame | list,
     # generate the initial correlations
     cor_plot = pd.DataFrame()
     cor_plot = cor_dat[f_col+y_col].corr(method=cor_meth,
-                                         numeric_only=True)[y_col]
+                                         numeric_only=numeric_only)[y_col]
     
     if len(y_col) > 1:
         cor_plot = cor_plot.add_prefix('All:')
@@ -191,9 +197,9 @@ def cor_matrix(f_dat: pd.DataFrame | list,
             if isinstance(cv,str):
                 cat_m = cor_dat[cv] == 1
                 cor_1 = cor_dat[cat_m][f_col+y_col].corr(method=cor_meth,
-                                                     numeric_only=False)[y_col]
+                                                     numeric_only=numeric_only)[y_col]
                 cor_2 = cor_dat[~cat_m][f_col+y_col].dropna().corr(method=cor_meth,
-                                                     numeric_only=False)[y_col]
+                                                     numeric_only=numeric_only)[y_col]
                 if len(y_col) > 1:  
                     cor_1 = cor_1.add_prefix(f'{ck}==1:')
                     cor_2 = cor_2.add_prefix(f'{ck}!=1:')
@@ -209,7 +215,7 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                                           right_index=True)
             else:
                 cor_1 = cor_dat.where(cv)[f_col+y_col].corr(method=cor_meth,
-                                                        numeric_only=False)[y_col]
+                                                        numeric_only=numeric_only)[y_col]
                 if len(y_col) > 1:
                     cor_1 = cor_1.add_prefix(f'{ck}:')
                 else:

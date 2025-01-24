@@ -25,7 +25,7 @@ ts2 = np.arange(60,25*60,60) # hourly shifts to 24 hours
 # combine the shift arrays
 tshift = np.concatenate([ts1,ts2]).tolist()
 
-tshift = [5,10]
+tshift = [5,10,15,20,25]
 
 f_dfs = dio.feat_shift(f_df,t_col='index',periods=tshift, unit='min',
                        drop_na=False) 

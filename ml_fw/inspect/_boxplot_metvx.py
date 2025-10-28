@@ -282,26 +282,27 @@ def boxplot_metvx(x_dat: pd.DataFrame | list,
             # create an array of k-fold samples which
             # holds metric values from each sample which
             # box stats can be computed from
-            sval = np.array([
-                met(y_d.loc[gd,'tr'].sample(frac=kfrac,random_state=x),
-                    y_d.loc[gd,'pr'].sample(frac=kfrac,random_state=x))
-                for x in np.arange(kfolds)              
-                ])
-            
-            lq = np.nanpercentile(sval,25)
-            uq = np.nanpercentile(sval,75)
-            
-            bval = {
-                "mean": np.nanmean(sval),  # not required
-                "med": np.nanmedian(sval),
-                "q1": lq,
-                "q3": uq,
-                "whislo": lq - whisker*(uq-lq),  # required
-                "whishi": uq + whisker*(uq-lq),  # required
-                "fliers": []  # required if showfliers=True
-                }
-            # append box to list
-            box_stats.append(bval) 
+            if sum(gd) > 1:
+                sval = np.array([
+                    met(y_d.loc[gd,'tr'].sample(frac=kfrac,random_state=x),
+                        y_d.loc[gd,'pr'].sample(frac=kfrac,random_state=x))
+                    for x in np.arange(kfolds)              
+                    ])
+                
+                lq = np.nanpercentile(sval,25)
+                uq = np.nanpercentile(sval,75)
+                
+                bval = {
+                    "mean": np.nanmean(sval),  # not required
+                    "med": np.nanmedian(sval),
+                    "q1": lq,
+                    "q3": uq,
+                    "whislo": lq - whisker*(uq-lq),  # required
+                    "whishi": uq + whisker*(uq-lq),  # required
+                    "fliers": []  # required if showfliers=True
+                    }
+                # append box to list
+                box_stats.append(bval) 
         
         # add box values to box dictionary
         box_idx[idx] = {'box_stats':box_stats, 'x_edge':x_edges, 

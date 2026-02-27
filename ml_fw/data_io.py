@@ -63,11 +63,11 @@ def create(dat: pd.DataFrame, feat_col: list = None, y_col: list = None,
        not isinstance(y_col,list):
         raise TypeError('feat_col and y_col must both be lists')
 
-    dat_col = feat_col+y_col
+    dat_col = feat_col + y_col
 
     # if a time column was passed add it to the list
     if isinstance(t_col,list):
-        dat_col = dat_col+t_col
+        dat_col = dat_col + t_col
 
     # creaate a new dataframe from the columns of the
     # passed dataframe
@@ -92,11 +92,11 @@ def create(dat: pd.DataFrame, feat_col: list = None, y_col: list = None,
         for i in lt_col:
             try:
                 if dat[i].max() > 24:
-                    x_dat[f'cos_{i}'] = np.cos(dat[i]*2*np.pi/360.)
-                    x_dat[f'sin_{i}'] = np.sin(dat[i]*2*np.pi/360.)
+                    x_dat[f'cos_{i}'] = np.cos(dat[i] * 2 * np.pi / 360.)
+                    x_dat[f'sin_{i}'] = np.sin(dat[i] * 2 * np.pi / 360.)
                 else:
-                    x_dat[f'cos_{i}'] = np.cos(dat[i]*2*np.pi/24.)
-                    x_dat[f'sin_{i}'] = np.sin(dat[i]*2*np.pi/24.)
+                    x_dat[f'cos_{i}'] = np.cos(dat[i] * 2 * np.pi / 24.)
+                    x_dat[f'sin_{i}'] = np.sin(dat[i] * 2 * np.pi / 24.)
             except Exception:
                 print(f'Could not add {i} as a cos/sin time column')
 
@@ -200,7 +200,7 @@ def feat_shift(s_dat: pd.DataFrame,
     # used as tolerance
     res = t_dat.reset_index(drop=True).diff().mode()[0].seconds
     if not tolerance:
-        tolerance = pd.Timedelta(res/2+1,unit='seconds')
+        tolerance = pd.Timedelta(res / 2 + 1,unit='seconds')
 
     # get the data columns
     d_col = s_dat.columns.to_list()
@@ -209,7 +209,7 @@ def feat_shift(s_dat: pd.DataFrame,
     r_dat = s_dat.copy().drop(axis=1,columns=t_col)
     # begin shifting the data
     for i in periods:
-        r_dat[t_col] = t_dat+pd.Timedelta(i,unit=unit)
+        r_dat[t_col] = t_dat + pd.Timedelta(i,unit=unit)
         r_suf = f' {i} {unit}'
         s_dat = pd.merge_asof(s_dat,r_dat, on=t_col,
                               direction='nearest',

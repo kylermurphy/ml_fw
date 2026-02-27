@@ -270,7 +270,7 @@ def boxplot_metvx(x_dat: pd.DataFrame | list,
         for i in np.arange(x_stat.size, dtype=int):
             # get the indices for values which lie between
             # bin[i] and bin[i+1]
-            gd = x_bnum == i+1
+            gd = x_bnum == i + 1
             # create an array of k-fold samples which
             # holds metric values from each sample which
             # box stats can be computed from
@@ -291,14 +291,14 @@ def boxplot_metvx(x_dat: pd.DataFrame | list,
                 uq = 0
 
             bval = {
-                "mean": np.nanmean(sval),  # not required
-                "med": np.nanmedian(sval),
-                "q1": lq,
-                "q3": uq,
-                "whislo": lq - whisker * (uq - lq),  # required
-                "whishi": uq + whisker * (uq - lq),  # required
-                "fliers": []  # required if showfliers=True
-                }
+                    "mean": np.nanmean(sval),  # not required
+                    "med": np.nanmedian(sval),
+                    "q1": lq,
+                    "q3": uq,
+                    "whislo": lq - whisker * (uq - lq),  # required
+                    "whishi": uq + whisker * (uq - lq),  # required
+                    "fliers": []  # required if showfliers=True
+                   }
             # append box to list
             box_stats.append(bval)
 

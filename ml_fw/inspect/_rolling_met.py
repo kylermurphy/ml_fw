@@ -128,7 +128,7 @@ def rolling_met(met_dat: pd.DataFrame,
         met_c = 0
         for lv in met_d:
             met_d[f'Metric {met_c:02}'] = lv
-            met_c = met_c+1
+            met_c = met_c + 1
     elif not isinstance(met_d, dict):
         met_d = {'Metric':met}
     # define the rolling window to compute the metric
@@ -139,7 +139,7 @@ def rolling_met(met_dat: pd.DataFrame,
                rdat.set_index(on).loc[l.index,y_pred])
             for mk, mv in met_d.items()]
         for l in roll  # noqa E741
-        ])
+                    ])
     # use the rolling to get and index for the returned
     # metric. this is needed in case step is used in the
     # rolling kwargs

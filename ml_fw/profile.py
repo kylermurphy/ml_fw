@@ -105,7 +105,7 @@ def cor_matrix(f_dat: pd.DataFrame | list,
             and isinstance(cor_dat, pd.DataFrame):
         f_col = f_dat
         y_col = y_dat
-        cor_dat = cor_dat[f_col+y_col]
+        cor_dat = cor_dat[f_col + y_col]
 
     # else if both f_dat and y_dat are pandas
     # combine them into one data frame to do the correlations
@@ -121,8 +121,8 @@ def cor_matrix(f_dat: pd.DataFrame | list,
 
         # get the nominal resolution of the feature data
         # this is used for combining the matrices
-        res = (pd.Series(f_dat.index[1:]) -
-               pd.Series(f_dat.index[:-1])).value_counts()
+        res = (pd.Series(f_dat.index[1:])
+               - pd.Series(f_dat.index[:-1])).value_counts()
         res = res.index[0]
 
         # combine the DataFrames to get a single DataFrame
@@ -136,7 +136,7 @@ def cor_matrix(f_dat: pd.DataFrame | list,
 
     # generate the initial correlations
     cor_plot = pd.DataFrame()
-    cor_plot = cor_dat[f_col+y_col].corr(method=cor_meth,
+    cor_plot = cor_dat[f_col + y_col].corr(method=cor_meth,
                                          numeric_only=numeric_only)[y_col]
 
     if len(y_col) > 1:
@@ -172,7 +172,7 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                 cat_dict[lv] = lv
             else:
                 cat_dict[f'call{cat_call:02}'] = lv
-                cat_call = cat_call+1
+                cat_call = cat_call + 1
     elif isinstance(cat_dat, dict):
         cat_dict = cat_dat
 
@@ -181,8 +181,8 @@ def cor_matrix(f_dat: pd.DataFrame | list,
         for ck, cv in cat_dict.items():
             if isinstance(cv,str):
                 cat_m = cor_dat[cv] == 1
-                cat_cor = cor_dat[cat_m][f_col+y_col]
-                cat_not = cor_dat[~cat_m][f_col+y_col]
+                cat_cor = cor_dat[cat_m][f_col + y_col]
+                cat_not = cor_dat[~cat_m][f_col + y_col]
                 cor_1 = cat_cor.corr(method=cor_meth,
                                      numeric_only=numeric_only)[y_col]
                 cor_2 = cat_not.dropna().corr(method=cor_meth,
@@ -201,7 +201,7 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                                           left_index=True,
                                           right_index=True)
             else:
-                cat_cor = cor_dat.where(cv)[f_col+y_col]
+                cat_cor = cor_dat.where(cv)[f_col + y_col]
                 cor_1 = cor_dat.corr(method=cor_meth,
                                      numeric_only=numeric_only)[y_col]
                 if len(y_col) > 1:

@@ -190,22 +190,22 @@ def boxplot_vx(x_dat: pd.DataFrame | list,
                                             range=xr, statistic=uq_nan)
 
         # calculate x location of the stats
-        x_cen = (x_edge[0:-1]+[x_edge[1:]])/2.
+        x_cen = (x_edge[0:-1] + [x_edge[1:]]) / 2.
         x_cen = x_cen.squeeze()
-        x_wid = x_edge[1]-x_edge[0]
+        x_wid = x_edge[1] - x_edge[0]
         # create a list to hold the required
         # parameters to draw a box and whisker plot
         box_stats = []
         for mn, md, lq, uq, in zip(mean, median, low_q, up_q):
             val = {
-                "mean":  mn,  # not required
-                "med": md,
-                "q1": lq,
-                "q3": uq,
-                "whislo": lq - whisker*(uq-lq),  # required
-                "whishi": uq + whisker*(uq-lq),  # required
-                "fliers": []  # required if showfliers=True
-                }
+                   "mean": mn,  # not required
+                   "med": md,
+                   "q1": lq,
+                   "q3": uq,
+                   "whislo": lq - whisker*(uq - lq),  # required
+                   "whishi": uq + whisker*(uq - lq),  # required
+                   "fliers": []  # required if showfliers=True
+                  }
             box_stats.append(val)
 
         # create a dictionary to store everything needed for plotting

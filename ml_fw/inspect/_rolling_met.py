@@ -134,12 +134,11 @@ def rolling_met(met_dat: pd.DataFrame,
     # define the rolling window to compute the metric
     roll = rdat.set_index(on).rolling(**roll_kwargs)
     rmet = np.array([
-        [
-            mv(rdat.set_index(on).loc[l.index,y_true],
-               rdat.set_index(on).loc[l.index,y_pred])
-            for mk, mv in met_d.items()]
-        for l in roll  # noqa E741
-                    ])
+        [mv(rdat.set_index(on).loc[l.index,y_true],
+            rdat.set_index(on).loc[l.index,y_pred])
+         for mk, mv in met_d.items()]
+         for l in roll]) # noqa E741
+
     # use the rolling to get and index for the returned
     # metric. this is needed in case step is used in the
     # rolling kwargs

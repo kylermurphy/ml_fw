@@ -137,7 +137,7 @@ def cor_matrix(f_dat: pd.DataFrame | list,
     # generate the initial correlations
     cor_plot = pd.DataFrame()
     cor_plot = cor_dat[f_col + y_col].corr(method=cor_meth,
-                                         numeric_only=numeric_only)[y_col]
+                                           numeric_only=numeric_only)[y_col]
 
     if len(y_col) > 1:
         cor_plot = cor_plot.add_prefix('All:')

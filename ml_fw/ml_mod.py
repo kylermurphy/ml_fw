@@ -84,7 +84,7 @@ def train(f_dat: pd.DataFrame, y_dat: pd.DataFrame, estimator,
 
         if grid_ratio and grid_ratio < 1:
             print(
-                f'Performing Grid Search using {grid_ratio * 100:.2f}% of data')
+                f'Performing Grid Search with {grid_ratio * 100:.2f}% of data')
             x_grid, _, y_grid, _ = train_test_split(f_dat,y_dat,
                                                     train_size=grid_ratio,
                                                     random_state=random_state)
@@ -121,7 +121,7 @@ def train(f_dat: pd.DataFrame, y_dat: pd.DataFrame, estimator,
             scaler = MinMaxScaler()
             scaler.fit(np.array(dist).transpose())
             dist2 = scaler.transform(np.array(dist).transpose())**2
-            best_pos = np.sqrt(dist2.sum(axis=1)/dist2.shape[1]).argmax()
+            best_pos = np.sqrt(dist2.sum(axis=1) / dist2.shape[1]).argmax()
 
             # get the best parameters
             # and set the final estimator for fitting

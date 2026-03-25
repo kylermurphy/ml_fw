@@ -221,6 +221,43 @@ def cor_matrix(f_dat: pd.DataFrame | list,
     return cor_plot
 
 def _corrwith(df, f_col,y_col, method, numeric_only):
+    """Compute correlations between feature columns and target columns.
+
+    A wrapper around pd.DataFrame.corrwith that handles single and multiple
+    target columns, avoiding the full N×N correlation matrix computed by
+    pd.DataFrame.corr.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing both feature and target columns.
+
+    f_col : list
+        Column names of the feature data to correlate against the targets.
+
+    y_col : list
+        Column names of the target data to correlate against the features.
+
+    method : str
+        Correlation method passed to corrwith. One of 'pearson', 'spearman',
+        or 'kendall'.
+
+    numeric_only : bool
+        If True, include only float, int, or boolean columns.
+
+    Returns
+    -------
+    pd.DataFrame
+        A DataFrame of shape (len(f_col), len(y_col)) where each column
+        contains the correlations of all features against one target variable.
+
+    Notes
+    -----
+    For a single target column, corrwith is called once against the Series.
+    For multiple target columns, corrwith is called once per target and the
+    results are concatenated. Both cases are faster than pd.DataFrame.corr
+    which computes the full N×N matrix before slicing.
+    """    
     if len(y_col) == 1:
         return df[f_col].corrwith(df[y_col[0]], method=method,
                                   numeric_only=numeric_only).to_frame(y_col[0])

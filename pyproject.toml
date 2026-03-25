@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = 'ml_fw'
+version = "0.0.1"
+description = "Basic ML framework to help prototype ML models faster"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+authors = [{name= "Kyle Murphy, et al.", email = "tbd@noplace.net"}]
+classifiers = [
+  "Development Status :: 3 - Alpha"
+]
+keywords = [
+  "machine learning"
+]
+dependencies = [
+  "numpy",
+  "matplotlib",
+  "pandas",
+  "seaborn",
+  "scikit-learn"
+]
+
+[project.optional-dependencies]
+test = [
+  "flake8",
+  "flake8-docstrings",
+  "pytest-cov"
+]
+doc = [
+  "sphinx"
+]

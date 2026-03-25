@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+#TODO Check to make sure that y is single valued
 
 def boxplot_vx(x_dat: pd.DataFrame | list,
                y_dat: pd.DataFrame | list,

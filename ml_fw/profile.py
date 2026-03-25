@@ -9,8 +9,7 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                cor_ind: str = None,
                cat_dat: list | dict = None,
                cor_meth='pearson',
-               numeric_only: bool = False,
-               y_drop: bool = True) -> pd.DataFrame:
+               numeric_only: bool = False) -> pd.DataFrame:
     """Derive correlation matrix of features with target variable.
 
     Parameters
@@ -82,11 +81,6 @@ def cor_matrix(f_dat: pd.DataFrame | list,
 
         Include only float, int or boolean data.
 
-    y_drop : bool, optional
-       The default is True.
-
-       Drop the y_dat from row of the correlation matrix as it is always 1.
-
     Returns
     -------
     cor_plot : pd.DataFrame
@@ -134,10 +128,14 @@ def cor_matrix(f_dat: pd.DataFrame | list,
         f_col = list(f_dat.columns)
         y_col = list(y_dat.columns)
 
+    # get the data for correlations
+    # don't keep computing the slices
+    all_cols = f_col + y_col
+    base_dat = cor_dat[all_cols]
+
     # generate the initial correlations
     cor_plot = pd.DataFrame()
-    cor_plot = cor_dat[f_col + y_col].corr(method=cor_meth,
-                                           numeric_only=numeric_only)[y_col]
+    cor_plot = _corrwith(base_dat,f_col,y_col,cor_meth,numeric_only)
 
     if len(y_col) > 1:
         cor_plot = cor_plot.add_prefix('All:')
@@ -181,12 +179,16 @@ def cor_matrix(f_dat: pd.DataFrame | list,
         for ck, cv in cat_dict.items():
             if isinstance(cv,str):
                 cat_m = cor_dat[cv] == 1
-                cat_cor = cor_dat[cat_m][f_col + y_col]
-                cat_not = cor_dat[~cat_m][f_col + y_col]
-                cor_1 = cat_cor.corr(method=cor_meth,
-                                     numeric_only=numeric_only)[y_col]
-                cor_2 = cat_not.dropna().corr(method=cor_meth,
-                                              numeric_only=numeric_only)[y_col]
+                cat_cor = base_dat[cat_m]
+                cat_not = base_dat[~cat_m]
+
+                cor_1 = _corrwith(cat_cor,f_col,y_col,cor_meth,numeric_only)
+                cor_2 = _corrwith(cat_not,f_col,y_col,cor_meth,numeric_only)
+
+                #cor_1 = cat_cor.corr(method=cor_meth,
+                #                     numeric_only=numeric_only)[y_col]
+                #cor_2 = cat_not.dropna().corr(method=cor_meth,
+                #                              numeric_only=numeric_only)[y_col]
                 if len(y_col) > 1:
                     cor_1 = cor_1.add_prefix(f'{ck}==1:')
                     cor_2 = cor_2.add_prefix(f'{ck}!=1:')
@@ -201,9 +203,12 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                                           left_index=True,
                                           right_index=True)
             else:
-                cat_cor = cor_dat.where(cv)[f_col + y_col]
-                cor_1 = cor_dat.corr(method=cor_meth,
-                                     numeric_only=numeric_only)[y_col]
+                cat_cor = base_dat.where(cv)
+                
+                cor_1 = _corrwith(cat_cor,f_col,y_col,cor_meth,numeric_only)
+                
+                #cor_1 = cat_cor.corr(method=cor_meth,
+                #                     numeric_only=numeric_only)[y_col]
                 if len(y_col) > 1:
                     cor_1 = cor_1.add_prefix(f'{ck}:')
                 else:
@@ -212,7 +217,18 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                 cor_plot = cor_plot.merge(cor_1,
                                           left_index=True,
                                           right_index=True)
-    if y_drop:
-        cor_plot = cor_plot.drop(y_col)
-
+    
     return cor_plot
+
+def _corrwith(df, f_col,y_col, method, numeric_only):
+    if len(y_col) == 1:
+        return df[f_col].corrwith(df[y_col[0]], method=method,
+                                  numeric_only=numeric_only).to_frame(y_col[0])
+    else:
+        # one corrwith per target — still much cheaper than full N×N corr
+        return pd.concat(
+            [df[f_col].corrwith(df[y], method=method,
+                                numeric_only=numeric_only).rename(y)
+             for y in y_col],
+            axis=1
+        )    

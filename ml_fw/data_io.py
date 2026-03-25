@@ -206,7 +206,7 @@ def feat_shift(s_dat: pd.DataFrame,
     d_col = s_dat.columns.to_list()
     d_col.remove(t_col)
     # get the data
-    r_dat = s_dat.copy().drop(axis=1,columns=t_col)
+    r_dat = s_dat.copy().drop(columns=t_col)
     # begin shifting the data
     for i in periods:
         r_dat[t_col] = t_dat + pd.Timedelta(i,unit=unit)
@@ -219,7 +219,7 @@ def feat_shift(s_dat: pd.DataFrame,
     # add the original index back in
     s_dat = s_dat.set_index(s_ind)
     if drop_dt:
-        s_dat = s_dat.drop(axis=1,columns=t_col)
+        s_dat = s_dat.drop(columns=t_col)
     # drop the original columns
     if drop_orig:
         s_dat = s_dat.drop(columns=d_col)

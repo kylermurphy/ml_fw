@@ -126,23 +126,32 @@ def rolling_met(met_dat: pd.DataFrame,
        isinstance(met_d, dict):
         met_list = met_d
         met_d = dict()
-        met_c = 0
         for i, lv in enumerate(met_list):
             met_d[f'Metric {i:02}'] = lv
     elif not isinstance(met_d, dict):
         met_d = {'Metric':met}
     # define the rolling window to compute the metric
-    roll = rdat.set_index(on).rolling(**roll_kwargs)
-    rmet = np.array([
-        [mv(rdat.set_index(on).loc[l.index,y_true],
-            rdat.set_index(on).loc[l.index,y_pred])
-         for mk, mv in met_d.items()]
-         for l in roll]) # noqa E741
+    rdat_indexed = rdat.set_index(on)
+    roll = rdat_indexed.rolling(**roll_kwargs)
+    
+    
+    results = []
+
+    for window in roll:
+        idx = window.index
+
+        y_t = rdat_indexed.loc[idx, y_true]
+        y_p = rdat_indexed.loc[idx, y_pred]
+
+        row = [metric(y_t, y_p) for metric in met_d.values()]
+        results.append(row)
+
+    rmet = np.array(results)
 
     # use the rolling to get and index for the returned
     # metric. this is needed in case step is used in the
     # rolling kwargs
-    rind = rdat.set_index(on).rolling(**roll_kwargs).mean().index
+    rind = rdat_indexed.rolling(**roll_kwargs).mean().index
     rdf = pd.DataFrame(data=rmet,columns=met_d.keys())
     rdf[on] = rind
     # rdf = pd.DataFrame({on:rind,'Metric':rmet})

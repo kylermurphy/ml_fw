@@ -124,11 +124,11 @@ def rolling_met(met_dat: pd.DataFrame,
     # for calculating metrics
     if isinstance(met_d, list) and not \
        isinstance(met_d, dict):
+        met_list = met_d
         met_d = dict()
         met_c = 0
-        for lv in met_d:
-            met_d[f'Metric {met_c:02}'] = lv
-            met_c = met_c + 1
+        for i, lv in enumerate(met_list):
+            met_d[f'Metric {i:02}'] = lv
     elif not isinstance(met_d, dict):
         met_d = {'Metric':met}
     # define the rolling window to compute the metric

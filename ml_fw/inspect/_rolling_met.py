@@ -107,19 +107,18 @@ def rolling_met(met_dat: pd.DataFrame,
     # if the true and modeled y-values are integers
     # assume we have a categorical model
     # else assume it is a regression model
-    if np.issubdtype(rdat[y_true].dtype,np.integer) \
-            and np.issubdtype(rdat[y_pred].dtype,np.integer) \
-            and not roll_metric:
-        print('Using Accuracy Metric')
-        met = lambda true, pred: metrics.accuracy_score(true, pred)
-        met_d = {'Accuracy':met}
-    elif not roll_metric:
-        print('Using Mean Square Error Metric')
-        met = lambda true, pred: metrics.mean_squared_error(true, pred)
-        met_d = {'MSE':met}
-    else:
-        print('Using passed metric')
+    if roll_metric is None:
+        if np.issubdtype(rdat[y_true].dtype, np.integer):
+            met_d = {'Accuracy': lambda tr, pr: metrics.accuracy_score(tr, pr)}
+        else:
+            met_d = {'MSE': lambda tr, pr: metrics.mean_squared_error(tr, pr)}
+    elif isinstance(roll_metric, list):
+        met_d = {f'Metric {i:02}': m for i, m in enumerate(roll_metric)}
+    elif isinstance(roll_metric, dict):
         met_d = roll_metric
+    else:
+        met_d = {'Metric': roll_metric}
+
     # create a dictionary to loop over
     # for calculating metrics
     if isinstance(met_d, list) and not \

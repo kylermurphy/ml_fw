@@ -12,7 +12,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 def train(f_dat: pd.DataFrame, y_dat: pd.DataFrame, estimator,
-          grid_params: dict = None, grid_kwargs: dict = {},
+          grid_params: dict = None, grid_kwargs: dict | None = None,
           grid_ratio: float = 0.3, random_state: int = 17):
     """Train the ML model.
 
@@ -54,6 +54,8 @@ def train(f_dat: pd.DataFrame, y_dat: pd.DataFrame, estimator,
     est_fit : object
         Instance of fitted estimator.
     """
+    if grid_kwargs is None:
+        grid_kwargs = {}
     # check the est parameters for random state
     # if it is none set it to random_state
     # else set random_state to the est.random_state
@@ -127,9 +129,11 @@ def train(f_dat: pd.DataFrame, y_dat: pd.DataFrame, estimator,
             # and set the final estimator for fitting
             est_fit = estimator.set_params(
                 **est_tune.cv_results_['params'][best_pos])
+    else:
+        est_fit = estimator
 
     # fit the model
-    est_fit.fit(f_dat, y_dat.values.ravel())
+    est_fit.fit(f_dat, y_dat.squeeze())
 
     # return the model
     return est_fit

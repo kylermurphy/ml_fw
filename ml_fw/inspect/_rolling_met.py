@@ -132,8 +132,6 @@ def rolling_met(met_dat: pd.DataFrame,
     # define the rolling window to compute the metric
     rdat_indexed = rdat.set_index(on)
     roll = rdat_indexed.rolling(**roll_kwargs)
-    
-    
     results = []
 
     for window in roll:

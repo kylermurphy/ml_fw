@@ -32,5 +32,7 @@ test = [
   "pytest-cov"
 ]
 doc = [
-  "sphinx"
+  "m2r2",
+  "sphinx",
+  "sphinx-rtd-theme"
 ]

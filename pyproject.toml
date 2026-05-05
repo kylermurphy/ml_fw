@@ -22,7 +22,7 @@ dependencies = [
   "pandas",
   "seaborn",
   "scikit-learn",
-  "pytables"
+  "tables"
 ]
 
 [project.optional-dependencies]

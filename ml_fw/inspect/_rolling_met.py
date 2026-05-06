@@ -128,7 +128,7 @@ def rolling_met(met_dat: pd.DataFrame,
         for i, lv in enumerate(met_list):
             met_d[f'Metric {i:02}'] = lv
     elif not isinstance(met_d, dict):
-        met_d = {'Metric':rolling_metric}
+        met_d = {'Metric':roll_metric}
     # define the rolling window to compute the metric
     rdat_indexed = rdat.set_index(on)
     roll = rdat_indexed.rolling(**roll_kwargs)

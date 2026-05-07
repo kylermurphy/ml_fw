@@ -8,15 +8,20 @@ permissions:
 jobs:
   docs:
     runs-on: ubuntu-latest
+    matrix:
+      python-version: ['3.12']
+
+    name: Build docs
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python-version }}
       - uses: actions/setup-python@v5
       - name: Install dependencies
         run: |
           pip install sphinx sphinx_rtd_theme m2r2
       - name: Sphinx build
         run: |
-          sphinx-build docs _build
+          sphinx-build -E docs _build
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/docs' }}

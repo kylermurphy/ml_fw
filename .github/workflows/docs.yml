@@ -13,9 +13,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
-      - name: Install dependencies
+      - name: Install docs Dependencies
         run: |
           pip install sphinx sphinx_rtd_theme m2r2
+      - name: Install module Dependencies
+        run: |
+          pip install .[test]
+
       - name: Sphinx build
         run: |
           sphinx-build -E docs _build

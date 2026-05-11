@@ -7,6 +7,7 @@ Created on Wed Jun 12 08:49:02 2024.
 
 import numpy as np
 import pandas as pd
+import warnings
 
 
 def create(dat: pd.DataFrame, feat_col: list = None, y_col: list = None,
@@ -68,6 +69,8 @@ def create(dat: pd.DataFrame, feat_col: list = None, y_col: list = None,
     # if a time column was passed add it to the list
     if isinstance(t_col,list):
         dat_col = dat_col + t_col
+    if isinstance(lt_col,list):
+        dat_col = dat_col + lt_col
 
     # creaate a new dataframe from the columns of the
     # passed dataframe
@@ -82,7 +85,7 @@ def create(dat: pd.DataFrame, feat_col: list = None, y_col: list = None,
                 x_dat[f'log10_{i}'] = np.log10(x_dat[i])
                 x_dat = x_dat.drop(columns=i)
             except Exception:
-                print(f'Could not log column {i}')
+                warnings.warn(f'Could not log column {i}')
 
     # from a subset of columns convert local time
     # or longitude columns to cyclical variables using
@@ -91,12 +94,14 @@ def create(dat: pd.DataFrame, feat_col: list = None, y_col: list = None,
     if isinstance(lt_col,list):
         for i in lt_col:
             try:
-                if dat[i].max() > 24:
-                    x_dat[f'cos_{i}'] = np.cos(dat[i] * 2 * np.pi / 360.)
-                    x_dat[f'sin_{i}'] = np.sin(dat[i] * 2 * np.pi / 360.)
+                if x_dat[i].max() > 24:
+                    x_dat[f'cos_{i}'] = np.cos(x_dat[i] * 2 * np.pi / 360.)
+                    x_dat[f'sin_{i}'] = np.sin(x_dat[i] * 2 * np.pi / 360.)
                 else:
-                    x_dat[f'cos_{i}'] = np.cos(dat[i] * 2 * np.pi / 24.)
-                    x_dat[f'sin_{i}'] = np.sin(dat[i] * 2 * np.pi / 24.)
+                    x_dat[f'cos_{i}'] = np.cos(x_dat[i] * 2 * np.pi / 24.)
+                    x_dat[f'sin_{i}'] = np.sin(x_dat[i] * 2 * np.pi / 24.)
+
+                x_dat = x_dat.drop(columns=i)
             except Exception:
                 print(f'Could not add {i} as a cos/sin time column')
 
@@ -115,7 +120,7 @@ def create(dat: pd.DataFrame, feat_col: list = None, y_col: list = None,
 
 def feat_shift(s_dat: pd.DataFrame,
                t_col='DateTime',
-               periods: list[int] = [5],
+               periods: list[int] | None = None,
                unit: str = 'min',
                tolerance: pd.Timedelta = None,
                drop_orig: bool = False,
@@ -182,7 +187,9 @@ def feat_shift(s_dat: pd.DataFrame,
         t_col = 'DateTime_idx9'
         drop_dt = True
 
-    if isinstance(periods,str):
+    if periods is None:
+        periods = [5]
+    elif isinstance(periods,str):
         periods = [periods]
     elif not isinstance(periods,list):
         raise TypeError('periods should be a string or a list')
@@ -198,7 +205,8 @@ def feat_shift(s_dat: pd.DataFrame,
     # resolution of the timeseries
     # if tolerance isn't defined this is
     # used as tolerance
-    res = t_dat.reset_index(drop=True).diff().mode()[0].seconds
+    res = t_dat.reset_index(drop=True).diff().mode()
+    res = res.iloc[0].total_seconds() if not res.empty else 0
     if not tolerance:
         tolerance = pd.Timedelta(res / 2 + 1,unit='seconds')
 
@@ -206,7 +214,7 @@ def feat_shift(s_dat: pd.DataFrame,
     d_col = s_dat.columns.to_list()
     d_col.remove(t_col)
     # get the data
-    r_dat = s_dat.copy().drop(axis=1,columns=t_col)
+    r_dat = s_dat.copy().drop(columns=t_col)
     # begin shifting the data
     for i in periods:
         r_dat[t_col] = t_dat + pd.Timedelta(i,unit=unit)
@@ -219,7 +227,7 @@ def feat_shift(s_dat: pd.DataFrame,
     # add the original index back in
     s_dat = s_dat.set_index(s_ind)
     if drop_dt:
-        s_dat = s_dat.drop(axis=1,columns=t_col)
+        s_dat = s_dat.drop(columns=t_col)
     # drop the original columns
     if drop_orig:
         s_dat = s_dat.drop(columns=d_col)

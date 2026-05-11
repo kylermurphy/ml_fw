@@ -21,7 +21,8 @@ dependencies = [
   "matplotlib",
   "pandas",
   "seaborn",
-  "scikit-learn"
+  "scikit-learn",
+  "tables"
 ]
 
 [project.optional-dependencies]
@@ -31,5 +32,7 @@ test = [
   "pytest-cov"
 ]
 doc = [
-  "sphinx"
+  "m2r2",
+  "sphinx",
+  "sphinx-rtd-theme"
 ]

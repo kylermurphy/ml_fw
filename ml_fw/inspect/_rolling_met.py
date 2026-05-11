@@ -107,42 +107,48 @@ def rolling_met(met_dat: pd.DataFrame,
     # if the true and modeled y-values are integers
     # assume we have a categorical model
     # else assume it is a regression model
-    if np.issubdtype(rdat[y_true].dtype,np.integer) \
-            and np.issubdtype(rdat[y_pred].dtype,np.integer) \
-            and not roll_metric:
-        print('Using Accuracy Metric')
-        met = lambda true, pred: metrics.accuracy_score(true, pred)
-        met_d = {'Accuracy':met}
-    elif not roll_metric:
-        print('Using Mean Square Error Metric')
-        met = lambda true, pred: metrics.mean_squared_error(true, pred)
-        met_d = {'MSE':met}
-    else:
-        print('Using passed metric')
+    if roll_metric is None:
+        if np.issubdtype(rdat[y_true].dtype, np.integer):
+            met_d = {'Accuracy': lambda tr, pr: metrics.accuracy_score(tr, pr)}
+        else:
+            met_d = {'MSE': lambda tr, pr: metrics.mean_squared_error(tr, pr)}
+    elif isinstance(roll_metric, list):
+        met_d = {f'Metric {i:02}': m for i, m in enumerate(roll_metric)}
+    elif isinstance(roll_metric, dict):
         met_d = roll_metric
+    else:
+        met_d = {'Metric': roll_metric}
+
     # create a dictionary to loop over
     # for calculating metrics
     if isinstance(met_d, list) and not \
        isinstance(met_d, dict):
+        met_list = met_d
         met_d = dict()
-        met_c = 0
-        for lv in met_d:
-            met_d[f'Metric {met_c:02}'] = lv
-            met_c = met_c + 1
+        for i, lv in enumerate(met_list):
+            met_d[f'Metric {i:02}'] = lv
     elif not isinstance(met_d, dict):
-        met_d = {'Metric':met}
+        met_d = {'Metric':roll_metric}
     # define the rolling window to compute the metric
-    roll = rdat.set_index(on).rolling(**roll_kwargs)
-    rmet = np.array([
-        [mv(rdat.set_index(on).loc[l.index,y_true],
-            rdat.set_index(on).loc[l.index,y_pred])
-         for mk, mv in met_d.items()]
-         for l in roll]) # noqa E741
+    rdat_indexed = rdat.set_index(on)
+    roll = rdat_indexed.rolling(**roll_kwargs)
+    results = []
+
+    for window in roll:
+        idx = window.index
+
+        y_t = rdat_indexed.loc[idx, y_true]
+        y_p = rdat_indexed.loc[idx, y_pred]
+
+        row = [metric(y_t, y_p) for metric in met_d.values()]
+        results.append(row)
+
+    rmet = np.array(results)
 
     # use the rolling to get and index for the returned
     # metric. this is needed in case step is used in the
     # rolling kwargs
-    rind = rdat.set_index(on).rolling(**roll_kwargs).mean().index
+    rind = rdat_indexed.rolling(**roll_kwargs).mean().index
     rdf = pd.DataFrame(data=rmet,columns=met_d.keys())
     rdf[on] = rind
     # rdf = pd.DataFrame({on:rind,'Metric':rmet})

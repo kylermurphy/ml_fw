@@ -204,7 +204,7 @@ def boxplot_metvx(x_dat: pd.DataFrame | list,
             isinstance(y_true, (pd.DataFrame, pd.Series)) and \
             isinstance(y_mod, (pd.DataFrame, pd.Series)):
         x_d = x_dat
-        x_c = x_dat.columns()
+        x_c = x_dat.columns
         y_t = y_true.to_numpy().squeeze()
         y_p = y_mod.to_numpy().squeeze()
 

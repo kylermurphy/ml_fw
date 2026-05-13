@@ -28,16 +28,11 @@ def sample_kde(residuals, n_samples):
 
 # Moving block bootstrap sampling 
 # Resamples blocks of residuals 
-def sample_block(residuals, n_samples, block_length = None):
+def sample_block(residuals, n_samples, block_length):
 
     residuals = np.asarray(residuals)
     n = len(residuals)
     sampled = []
-
-    if block_length is None: 
-         opt = optimal_block_length(residuals)
-
-         block_length = int(round(opt["stationary"].iloc[0]))
 
     if block_length > n:
         raise ValueError("block_length cannot be larger than number of residuals")

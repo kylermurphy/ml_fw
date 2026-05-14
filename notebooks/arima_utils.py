@@ -39,6 +39,12 @@ def characterize_residuals(residuals, block_length = None):
 
     ljung_box_result = (ljung_box_table["lb_pvalue"] > 0.05).all()
 
+# Shapiro Wilk tests if the data are normally distributed
+# If it passes, the data is normal, and therefore it supports using a gaussian mode
+# Ljung Box tests if the data has autocorrelation
+# If it passes, the residuals look independant (ordinary residual resampling is likely ok)
+# Low skew means that the results are roughly symmetric (near gaussian)
+# Low kurtosis means low tail heaviness (outliers), not many deviations from the mean
 
     if shapiro_wilk_result > 0.05 and ljung_box_result:
 
@@ -79,9 +85,7 @@ def characterize_residuals(residuals, block_length = None):
 
     if block_length is None: 
 
-        opt = optimal_block_length(residuals)
-
-        l = int(round(opt["stationary"].iloc[0]))
+        l = int(len(residuals) ** (1/3))
 
     else:
 

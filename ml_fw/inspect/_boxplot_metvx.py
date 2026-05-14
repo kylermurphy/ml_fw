@@ -306,3 +306,268 @@ def boxplot_metvx(x_dat: pd.DataFrame | list,
                         'x_centre':x_cen, 'x_width':x_wid}
 
     return box_idx
+
+
+# =============================================================================
+# REFACTORED VERSION - boxplot_metvx_ref
+# =============================================================================
+
+def _extract_data_metvx(x_dat, y_true, y_mod, box_dat=None):
+    """
+    Extract and normalize input data.
+    
+    Returns
+    -------
+    x_data : DataFrame or Series
+        X data for binning
+    x_cols : list
+        Column names for x_data
+    y_true_arr : ndarray
+        1D array of true values
+    y_mod_arr : ndarray
+        1D array of model predictions
+    """
+    if isinstance(box_dat, pd.DataFrame) and all(isinstance(d, list) for d in [x_dat, y_true, y_mod]):
+        x_data = box_dat[x_dat]
+        x_cols = x_dat
+        y_true_arr = box_dat[y_true].to_numpy().squeeze()
+        y_mod_arr = box_dat[y_mod].to_numpy().squeeze()
+    elif all(isinstance(d, (pd.DataFrame, pd.Series)) for d in [x_dat, y_true, y_mod]):
+        x_data = x_dat
+        x_cols = list(x_dat.columns) if isinstance(x_dat, pd.DataFrame) else [x_dat.name or 'x']
+        y_true_arr = y_true.to_numpy().squeeze()
+        y_mod_arr = y_mod.to_numpy().squeeze()
+    else:
+        raise ValueError("Invalid data input: either provide (x_dat, y_true, y_mod as DataFrames) "
+                         "or (x_dat, y_true, y_mod as lists with box_dat)")
+    
+    return x_data, x_cols, y_true_arr, y_mod_arr
+
+
+def _select_metric(y_true, y_mod, custom_metric=None):
+    """
+    Select metric function based on data types.
+    
+    Parameters
+    ----------
+    y_true : ndarray
+        True values
+    y_mod : ndarray
+        Model predictions
+    custom_metric : callable, optional
+        Custom metric function
+    
+    Returns
+    -------
+    callable
+        Metric function to use
+    """
+    if custom_metric:
+        return custom_metric
+    
+    if np.issubdtype(y_true.dtype, np.integer) and np.issubdtype(y_mod.dtype, np.integer):
+        return metrics.accuracy_score
+    else:
+        return metrics.mean_squared_error
+
+
+def _normalize_config(config_list, num_cols, default_value):
+    """
+    Normalize configuration list (bins or xrange) to match number of columns.
+    
+    Parameters
+    ----------
+    config_list : int, float, list, or None
+        Configuration to normalize
+    num_cols : int
+        Number of columns to match
+    default_value : int, float, or None
+        Default value to use
+    
+    Returns
+    -------
+    list
+        Normalized configuration list
+    """
+    if isinstance(config_list, list):
+        # Special case for xrange with single column
+        if default_value is None and len(config_list) == 2 and num_cols == 1:
+            return [config_list]
+        elif len(config_list) == num_cols:
+            return config_list
+    
+    return [default_value] * num_cols
+
+
+def _compute_bin_metrics(bin_mask, metric_func, y_data, kfolds, kfrac):
+    """
+    Compute metric values for a single bin via k-fold sampling.
+    
+    Parameters
+    ----------
+    bin_mask : ndarray
+        Boolean mask for current bin
+    metric_func : callable
+        Metric function
+    y_data : DataFrame
+        DataFrame with 'tr' (true) and 'pr' (pred) columns
+    kfolds : int
+        Number of folds
+    kfrac : float
+        Fraction to sample each fold
+    
+    Returns
+    -------
+    ndarray
+        Array of metric values from k-fold sampling
+    """
+    if bin_mask.sum() <= 1:
+        return np.array([])
+    
+    # Get data for this bin
+    y_bin = y_data.loc[bin_mask]
+    
+    # Compute metric for each k-fold sample
+    metric_values = np.array([
+        metric_func(
+            y_bin['tr'].sample(frac=kfrac, random_state=seed).values,
+            y_bin['pr'].sample(frac=kfrac, random_state=seed).values
+        )
+        for seed in range(kfolds)
+    ])
+    
+    return metric_values
+
+
+def _create_box_stats_dict(metric_values, whisker):
+    """
+    Create box plot statistics dictionary.
+    
+    Parameters
+    ----------
+    metric_values : ndarray
+        Array of metric values
+    whisker : float
+        Whisker coefficient (e.g., 1.5 for Tukey)
+    
+    Returns
+    -------
+    dict
+        Dictionary with box plot statistics
+    """
+    if len(metric_values) == 0:
+        return {"mean": np.nan, "med": np.nan, "q1": np.nan, "q3": np.nan,
+                "whislo": np.nan, "whishi": np.nan, "fliers": []}
+    
+    q1 = np.nanpercentile(metric_values, 25)
+    q3 = np.nanpercentile(metric_values, 75)
+    iqr = q3 - q1
+    
+    return {
+        "mean": np.nanmean(metric_values),
+        "med": np.nanmedian(metric_values),
+        "q1": q1,
+        "q3": q3,
+        "whislo": q1 - whisker * iqr,
+        "whishi": q3 + whisker * iqr,
+        "fliers": []
+    }
+
+
+def boxplot_metvx_ref(x_dat: pd.DataFrame | list,
+                      y_true: pd.DataFrame | list,
+                      y_mod: pd.DataFrame | list,
+                      box_dat: pd.DataFrame = None,
+                      box_metric=None,
+                      kfolds: int = 100,
+                      kfrac: float = 0.5,
+                      bins: int | list = 10,
+                      xrange: list[tuple[float, float]] | None = None,
+                      whisker: float = 1.5) -> dict:
+    """
+    Calculate boxplot statistics of a metric (accuracy/error) across x bins.
+    
+    This is a refactored version of boxplot_metvx with improved readability,
+    performance, and pythonic code patterns.
+
+    Parameters
+    ----------
+    x_dat : pd.DataFrame | list
+        Data for binning. If list, contains column names to extract from box_dat.
+    y_true : pd.DataFrame | list
+        True labels/values.
+    y_mod : pd.DataFrame | list
+        Model predictions.
+    box_dat : pd.DataFrame, optional
+        Combined DataFrame (required if x_dat, y_true, y_mod are lists).
+    box_metric : callable, optional
+        Custom metric function(y_true, y_pred). If None, auto-selected based on
+        data type: accuracy_score for integers, mean_squared_error for floats.
+    kfolds : int, default=100
+        Number of k-fold samples per bin.
+    kfrac : float, default=0.5
+        Fraction of data to sample in each fold.
+    bins : int | list, default=10
+        Number of bins or list of bin counts per x column.
+    xrange : list[tuple[float, float]] | None, default=None
+        (min, max) range for bins per x column.
+    whisker : float, default=1.5
+        Whisker coefficient (1.5 = Tukey's boxplot).
+
+    Returns
+    -------
+    dict
+        Dictionary mapping x column names to boxplot data:
+        - 'box_stats': List of dicts with keys {mean, med, q1, q3, whislo, whishi, fliers}
+        - 'x_edge': Bin edge positions
+        - 'x_centre': Bin center positions
+        - 'x_width': Width of bins
+    """
+    # Extract and validate data
+    x_data, x_cols, y_true_arr, y_mod_arr = _extract_data_metvx(x_dat, y_true, y_mod, box_dat)
+    
+    # Select metric function
+    metric_func = _select_metric(y_true_arr, y_mod_arr, box_metric)
+    
+    # Normalize bins and xrange to match x columns
+    bins_normalized = _normalize_config(bins, len(x_cols), 10)
+    xrange_normalized = _normalize_config(xrange, len(x_cols), None)
+    
+    # Combine true and model data in DataFrame for efficient sampling
+    y_combined = pd.DataFrame({"tr": y_true_arr, "pr": y_mod_arr})
+    
+    results = {}
+    
+    for col_name, num_bins, col_range in zip(x_cols, bins_normalized, xrange_normalized):
+        # Extract x values, handling both DataFrame columns and Series
+        try:
+            x_vals = x_data[col_name].to_numpy().squeeze()
+        except (KeyError, AttributeError):
+            x_vals = x_data.to_numpy().squeeze()
+        
+        # Bin the x data
+        _, x_edges, bin_indices = stats.binned_statistic(
+            x_vals, x_vals, bins=num_bins, range=col_range
+        )
+        
+        # Calculate bin centers and widths (vectorized)
+        x_centers = (x_edges[:-1] + x_edges[1:]) / 2.0
+        x_width = x_edges[1] - x_edges[0]
+        
+        # Compute box stats for each bin
+        box_stats = [
+            _create_box_stats_dict(
+                _compute_bin_metrics(bin_indices == i+1, metric_func, y_combined, kfolds, kfrac),
+                whisker
+            )
+            for i in range(len(x_edges) - 1)
+        ]
+        
+        results[col_name] = {
+            'box_stats': box_stats,
+            'x_edge': x_edges,
+            'x_centre': x_centers,
+            'x_width': x_width
+        }
+    
+    return results

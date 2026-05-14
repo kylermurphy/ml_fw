@@ -84,7 +84,8 @@ def _normalize_roll_metric(
     if callable(roll_metric):
         return {'Metric': roll_metric}
 
-    raise TypeError('roll_metric must be a callable, list/tuple of callables, dict, or None')
+    raise TypeError('roll_metric must be a callable, list/tuple of callables, ' \
+    'dict, or None')
 
 
 def _compute_rolling_metrics(

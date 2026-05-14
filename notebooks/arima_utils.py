@@ -14,16 +14,19 @@ def fit_arima_and_characterize(y, title , plot = False, block_length = None):
     
     residuals = model.resid() 
 
-    characterization = characterize_residuals(residuals, block_length = block_length)
+    p, d, q = model.order
+
+    characterization = characterize_residuals(residuals, p, q, block_length = block_length)
 
     panel = None
 
     if plot:   
         panel = diagnostic_plot(residuals, title)
+    
 
-    return model, residuals, characterization, panel 
+    return model, residuals, characterization, panel
 
-def characterize_residuals(residuals, block_length = None):
+def characterize_residuals(residuals, p, q, block_length = None):
 
     mean_result = np.mean(residuals)
 
@@ -35,7 +38,7 @@ def characterize_residuals(residuals, block_length = None):
 
     shapiro_wilk_result = shapiro(residuals).pvalue
 
-    ljung_box_table = acorr_ljungbox(residuals, lags = [1,5,10], model_df = 2) # ** check with kyle 
+    ljung_box_table = acorr_ljungbox(residuals, lags = [1,5,10], model_df = p + q) # ** check with kyle 
 
     ljung_box_result = (ljung_box_table["lb_pvalue"] > 0.05).all()
 
@@ -45,6 +48,7 @@ def characterize_residuals(residuals, block_length = None):
 # If it passes, the residuals look independant (ordinary residual resampling is likely ok)
 # Low skew means that the results are roughly symmetric (near gaussian)
 # Low kurtosis means low tail heaviness (outliers), not many deviations from the mean
+# https://www.simplilearn.com/tutorials/statistics-tutorial/skewness-and-kurtosis?
 
     if shapiro_wilk_result > 0.05 and ljung_box_result:
 
@@ -92,6 +96,7 @@ def characterize_residuals(residuals, block_length = None):
         l = block_length
     
     characterization = {
+    "Sample count": float(len(residuals)),
     "mean": float(mean_result),
     "std": float(sd_result),
     "skew": float(skew_result),

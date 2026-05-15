@@ -821,6 +821,9 @@ def plot_boxplot_metvx(results,
         if fig is None:
             fig = plt.figure(figsize=(figsize[0], figsize[1] * n_rows / 2))
         
+        global_color_idx = 0
+        global_alpha_idx = 0
+        
         for i, xcol in enumerate(unique_xcols):
             for j, mname in enumerate(unique_metrics):
                 ax_idx = i * n_cols + j + 1
@@ -830,11 +833,15 @@ def plot_boxplot_metvx(results,
                 
                 # Plot if data exists
                 if xcol in filtered_results and mname in filtered_results[xcol]:
+                    # Get single color for this panel
+                    panel_color = colors[global_color_idx % len(colors)]
+                    panel_alpha = alphas[global_alpha_idx % len(alphas)]
+                    
                     _plot_single_boxplot(
                         filtered_results[xcol][mname],
                         ax=ax,
-                        colors=colors,
-                        alphas=alphas,
+                        color=panel_color,
+                        alpha=panel_alpha,
                         showmeans=showmeans,
                         showfliers=showfliers,
                         title=f'{xcol} - {mname}'
@@ -842,10 +849,18 @@ def plot_boxplot_metvx(results,
                     # Format x-axis
                     data = filtered_results[xcol][mname]
                     _format_x_axis(ax, data['x_centre'], data['x_width'])
+                    
+                    # Increment color indices for next panel
+                    global_color_idx += 1
+                    global_alpha_idx += 1
     
     elif separate_by == 'x_col':
         if fig is None:
             fig = plt.figure(figsize=(figsize[0], figsize[1] * len(unique_xcols) / 2))
+        
+        # Global color cycling across all panels
+        global_color_idx = 0
+        global_alpha_idx = 0
         
         for i, xcol in enumerate(unique_xcols):
             ax = fig.add_subplot(len(unique_xcols), 1, i + 1)
@@ -853,8 +868,6 @@ def plot_boxplot_metvx(results,
             axes_dict[xcol] = ax
             
             metric_colors = {}
-            color_idx = 0
-            alpha_idx = 0
             
             # Plot each metric separately on the same axes with different colors
             for mname in unique_metrics:
@@ -864,9 +877,9 @@ def plot_boxplot_metvx(results,
                     x_centres = data['x_centre']
                     x_width = data['x_width']
                     
-                    # Get color and alpha for this metric
-                    color = colors[color_idx % len(colors)]
-                    alpha = alphas[alpha_idx % len(alphas)]
+                    # Get color and alpha from global cycling
+                    color = colors[global_color_idx % len(colors)]
+                    alpha = alphas[global_alpha_idx % len(alphas)]
                     metric_colors[mname] = (color, alpha)
                     
                     # Convert color to RGBA tuple if it's a string or list
@@ -896,8 +909,9 @@ def plot_boxplot_metvx(results,
                           boxprops=boxprops, medianprops=medianprops, meanprops=meanprops,
                           showmeans=showmeans, showfliers=showfliers, patch_artist=True)
                     
-                    color_idx += 1
-                    alpha_idx += 1
+                    # Increment global color indices
+                    global_color_idx += 1
+                    global_alpha_idx += 1
             
             ax.set_title(f'{xcol}')
             ax.set_xlabel('Bin Center')
@@ -919,14 +933,16 @@ def plot_boxplot_metvx(results,
         if fig is None:
             fig = plt.figure(figsize=(figsize[0] * len(unique_metrics) / 2, figsize[1]))
         
+        # Global color cycling across all panels
+        global_color_idx = 0
+        global_alpha_idx = 0
+        
         for i, mname in enumerate(unique_metrics):
             ax = fig.add_subplot(1, len(unique_metrics), i + 1)
             axes_list.append(ax)
             axes_dict[mname] = ax
             
             xcol_colors = {}
-            color_idx = 0
-            alpha_idx = 0
             
             # Plot each x_col separately on the same axes with different colors
             for xcol in unique_xcols:
@@ -936,9 +952,9 @@ def plot_boxplot_metvx(results,
                     x_centres = data['x_centre']
                     x_width = data['x_width']
                     
-                    # Get color and alpha for this x_col
-                    color = colors[color_idx % len(colors)]
-                    alpha = alphas[alpha_idx % len(alphas)]
+                    # Get color and alpha from global cycling
+                    color = colors[global_color_idx % len(colors)]
+                    alpha = alphas[global_alpha_idx % len(alphas)]
                     xcol_colors[xcol] = (color, alpha)
                     
                     # Convert color to RGBA tuple if it's a string or list
@@ -968,8 +984,9 @@ def plot_boxplot_metvx(results,
                           boxprops=boxprops, medianprops=medianprops, meanprops=meanprops,
                           showmeans=showmeans, showfliers=showfliers, patch_artist=True)
                     
-                    color_idx += 1
-                    alpha_idx += 1
+                    # Increment global color indices
+                    global_color_idx += 1
+                    global_alpha_idx += 1
             
             ax.set_title(f'{mname}')
             ax.set_xlabel('Bin Center')
@@ -998,9 +1015,9 @@ def plot_boxplot_metvx(results,
     }
 
 
-def _plot_single_boxplot(data, ax, colors, alphas, showmeans, showfliers, title=None):
+def _plot_single_boxplot(data, ax, color, alpha, showmeans, showfliers, title=None):
     """
-    Plot a single boxplot on given axes.
+    Plot a single boxplot on given axes with a single color for all boxes.
     
     Parameters
     ----------
@@ -1008,10 +1025,10 @@ def _plot_single_boxplot(data, ax, colors, alphas, showmeans, showfliers, title=
         Single metric data with keys 'box_stats', 'x_centre', 'x_width', 'x_edge'
     ax : matplotlib.axes.Axes
         Axes to plot on
-    colors : list
-        Colors to cycle through
-    alphas : list
-        Alphas to cycle through
+    color : str or tuple
+        Single color for all boxes in this panel
+    alpha : float
+        Alpha transparency for box faces (0-1)
     showmeans : bool
         Whether to show means
     showfliers : bool
@@ -1023,41 +1040,28 @@ def _plot_single_boxplot(data, ax, colors, alphas, showmeans, showfliers, title=
     x_centres = data['x_centre']
     x_width = data['x_width']
     
-    # Add color and alpha to each box stat
-    color_cycle = cycle(colors)
-    alpha_cycle = cycle(alphas)
+    # Convert color to RGBA tuple
+    try:
+        rgba_color = list(to_rgba(color))
+    except (ValueError, AttributeError):
+        if isinstance(color, (list, tuple)) and len(color) == 3:
+            rgba_color = list(color) + [1.0]
+        else:
+            rgba_color = list(color) if isinstance(color, (list, tuple)) else [0, 0, 0, 1.0]
     
-    for i, bstat in enumerate(box_stats):
-        bstat_copy = bstat.copy()
-        color = next(color_cycle)
-        alpha = next(alpha_cycle)
-        
-        # Convert color to RGBA tuple
-        try:
-            rgba_color = list(to_rgba(color))
-        except (ValueError, AttributeError):
-            if len(color) == 3:
-                rgba_color = list(color) + [1.0]
-            else:
-                rgba_color = list(color)
-        
-        # Set box face and edge colors
-        box_fc = rgba_color.copy()
-        box_fc[-1] = alpha  # Set alpha for face color
-        box_ec = rgba_color.copy()
-        box_ec[-1] = 1.0  # Edge always opaque
-        
-        bstat_copy['facecolor'] = tuple(box_fc)
-        bstat_copy['edgecolor'] = tuple(box_ec)
-        bstat_copy['linewidth'] = 1.5
-        
-        box_stats[i] = bstat_copy
+    # Set box face and edge colors
+    box_fc = rgba_color.copy()
+    box_fc[-1] = alpha  # Set alpha for face color
+    box_ec = rgba_color.copy()
+    box_ec[-1] = 1.0  # Edge always opaque
     
-    # Define properties using matplotlib boxprops/medianprops/meanprops
-    boxprops = {'lw': 1.5}
-    medianprops = {'lw': 2.0}
-    meanprops = {'marker': 'D', 'markersize': 5}
+    # Define properties using this panel's color
+    boxprops = {'fc': tuple(box_fc), 'ec': tuple(box_ec), 'lw': 1.5}
+    medianprops = {'c': tuple(rgba_color[:3] + [1.0]), 'lw': 2.0}
+    meanprops = {'marker': 'D', 'mfc': tuple(rgba_color[:3] + [1.0]), 
+                'mec': tuple(rgba_color[:3] + [1.0]), 'markersize': 5}
     
+    # Call bxp with patch_artist=True
     ax.bxp(box_stats, positions=x_centres, widths=x_width * 0.6,
            boxprops=boxprops, medianprops=medianprops, meanprops=meanprops,
            showmeans=showmeans, showfliers=showfliers, patch_artist=True)

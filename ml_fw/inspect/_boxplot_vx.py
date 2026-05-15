@@ -421,10 +421,12 @@ def boxplot_vx_ref(x_dat: pd.DataFrame | list,
         box_stats = _create_box_stats_list(stats_result, whisker)
         
         results[col_name] = {
-            'box_stats': box_stats,
-            'x_edge': x_edges,
-            'x_centre': x_centers,
-            'x_width': x_width
-        }
+            'residuals': {
+                'box_stats': box_stats,
+                'x_edge': x_edges,
+                'x_centre': x_centers,
+                'x_width': x_width
+                }
+            }
     
     return results

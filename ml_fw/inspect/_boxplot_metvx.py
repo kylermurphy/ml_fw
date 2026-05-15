@@ -13,7 +13,7 @@ from matplotlib.colors import to_rgba
 from itertools import cycle
 
 
-def boxplot_metvx(x_dat: pd.DataFrame | list,
+def boxplot_metvx_old(x_dat: pd.DataFrame | list,
                   y_true: pd.DataFrame | list,
                   y_mod: pd.DataFrame | list,
                   box_dat: pd.DataFrame = None,
@@ -538,7 +538,7 @@ def _create_box_stats_dict(metric_values, whisker):
     }
 
 
-def boxplot_metvx_ref(x_dat: pd.DataFrame | list,
+def boxplot_metvx(x_dat: pd.DataFrame | list,
                       y_true: pd.DataFrame | list,
                       y_mod: pd.DataFrame | list,
                       box_dat: pd.DataFrame = None,
@@ -678,6 +678,42 @@ def boxplot_metvx_ref(x_dat: pd.DataFrame | list,
 # PLOTTING FUNCTION
 # =============================================================================
 
+def _format_x_axis(ax, x_centres, x_width):
+    """
+    Format x-axis tick marks and labels for better readability.
+    
+    Parameters
+    ----------
+    ax : matplotlib.axes.Axes
+        Axes to format
+    x_centres : ndarray
+        X position centers of bins
+    x_width : float
+        Width of each bin
+    """
+    # Set ticks at bin centers
+    ax.set_xticks(x_centres)
+    
+    # Format tick labels - round to reasonable precision
+    tick_labels = []
+    for val in x_centres:
+        if abs(val) < 0.001 or abs(val) > 10000:
+            # Use scientific notation for very small/large numbers
+            tick_labels.append(f'{val:.2e}')
+        elif abs(val - int(val)) < 1e-10:
+            # Integer values
+            tick_labels.append(f'{int(val)}')
+        else:
+            # Decimal values - use 2 significant figures after decimal
+            tick_labels.append(f'{val:.3f}')
+    
+    ax.set_xticklabels(tick_labels, rotation=45, ha='right')
+    
+    # Add minor gridlines for better readability
+    ax.grid(True, axis='x', alpha=0.2, linestyle='--', which='major')
+    ax.grid(True, axis='y', alpha=0.1, linestyle=':', which='minor')
+
+
 def plot_boxplot_metvx(results,
                        separate_by='both',
                        metric_name=None,
@@ -803,6 +839,9 @@ def plot_boxplot_metvx(results,
                         showfliers=showfliers,
                         title=f'{xcol} - {mname}'
                     )
+                    # Format x-axis
+                    data = filtered_results[xcol][mname]
+                    _format_x_axis(ax, data['x_centre'], data['x_width'])
     
     elif separate_by == 'x_col':
         if fig is None:
@@ -863,6 +902,9 @@ def plot_boxplot_metvx(results,
             ax.set_title(f'{xcol}')
             ax.set_xlabel('Bin Center')
             ax.set_ylabel('Metric Value')
+            
+            # Format x-axis for readability
+            _format_x_axis(ax, x_centres, x_width)
             
             # Add legend if multiple metrics
             if len(unique_metrics) > 1:
@@ -933,6 +975,10 @@ def plot_boxplot_metvx(results,
             ax.set_xlabel('Bin Center')
             ax.set_ylabel('Metric Value')
             
+            # Format x-axis for readability (use data from last plotted x_col)
+            if len(unique_xcols) > 0 and xcol in filtered_results and mname in filtered_results[xcol]:
+                data = filtered_results[xcol][mname]
+                _format_x_axis(ax, data['x_centre'], data['x_width'])
             
             # Add legend if multiple x_cols
             if len(unique_xcols) > 1:

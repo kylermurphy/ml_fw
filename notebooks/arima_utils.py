@@ -1,138 +1,162 @@
-import numpy as np 
-import matplotlib.pyplot as plt 
+import numpy as np
+import matplotlib.pyplot as plt
 import pmdarima as pm
+
 from statsmodels.graphics.tsaplots import plot_acf
 from scipy.stats import skew, kurtosis, shapiro, norm, probplot
 from statsmodels.stats.diagnostic import acorr_ljungbox
-from arch.bootstrap import optimal_block_length
 
-def fit_arima_and_characterize(y, title , plot = False, block_length = None):
 
-    model = pm.auto_arima(y, seasonal=False, information_criterion='aic',
-                       stepwise=True, error_action='ignore',
-                       suppress_warnings=True, trace=True)
-    
-    residuals = model.resid() 
+def fit_model(y, title="", plot=False, block_length=None):
+    """
+    Fit an ARIMA model, extract residuals, characterize them,
+    and optionally plot diagnostics.
+    """
 
+    y = np.asarray(y)
+
+    model = pm.auto_arima(
+        y,
+        seasonal=False,
+        information_criterion="aic",
+        stepwise=True,
+        error_action="ignore",
+        suppress_warnings=True,
+        trace=True,
+    )
+
+    residuals = model.resid()
     p, d, q = model.order
 
-    characterization = characterize_residuals(residuals, p, q, block_length = block_length)
+    characterization = characterize_residuals(
+        residuals,
+        model_df=p + q,
+        block_length=block_length,
+    )
 
-    panel = None
+    fig = None
 
-    if plot:   
-        panel = diagnostic_plot(residuals, title)
-    
+    if plot:
+        fig = plot_residual_diagnostics(residuals, title)
 
-    return model, residuals, characterization, panel
-
-def characterize_residuals(residuals, p, q, block_length = None):
-
-    mean_result = np.mean(residuals)
-
-    sd_result = np.std(residuals)
-
-    kurtosis_result = kurtosis(residuals)
-
-    skew_result = skew(residuals)
-
-    shapiro_wilk_result = shapiro(residuals).pvalue
-
-    ljung_box_table = acorr_ljungbox(residuals, lags = [1,5,10], model_df = p + q) # ** check with kyle 
-
-    ljung_box_result = (ljung_box_table["lb_pvalue"] > 0.05).all()
-
-# Shapiro Wilk tests if the data are normally distributed
-# If it passes, the data is normal, and therefore it supports using a gaussian mode
-# Ljung Box tests if the data has autocorrelation
-# If it passes, the residuals look independant (ordinary residual resampling is likely ok)
-# Low skew means that the results are roughly symmetric (near gaussian)
-# Low kurtosis means low tail heaviness (outliers), not many deviations from the mean
-# https://www.simplilearn.com/tutorials/statistics-tutorial/skewness-and-kurtosis?
-
-    if shapiro_wilk_result > 0.05 and ljung_box_result:
-
-        if abs(kurtosis_result) < 1 and abs(skew_result) < 0.5:
-
-            recommended_method = "Gaussian Parametric is recommended"
-
-        elif 1 < abs(kurtosis_result) < 3 and 0.5 < abs(skew_result) < 1:
-             
-             recommended_method = "Gaussian or Empirical Bootstrap are recommended"
-
-        else:
-
-            recommended_method = "Empirical Bootstrap is recommended"     
-
-    elif shapiro_wilk_result < 0.05 and ljung_box_result:
-
-        if abs(kurtosis_result) < 1 and abs(skew_result) < 0.5:
-
-            recommended_method = "Empirical Bootstrap is recommended"
-
-        elif 1 < abs(kurtosis_result) < 3 and 0.5 < abs(skew_result) < 1:
-             
-             recommended_method = "Empirical Bootstrap is recommended"
-
-        else:
-
-            recommended_method = "Empirical Bootstrap or KDE are recommended"
-
-    elif shapiro_wilk_result > 0.05 and not ljung_box_result:
-
-        recommended_method = "Block Bootstrap is recommended" 
-
-    elif shapiro_wilk_result < 0.05 and not ljung_box_result: 
-
-        recommended_method = "Block Bootstrap is recommended"  
+    return {
+        "model": model,
+        "residuals": residuals,
+        "order": model.order,
+        "aic": model.aic(),
+        "characterization": characterization,
+        "figure": fig,
+    }
 
 
-    if block_length is None: 
+def characterize_residuals(residuals, model_df=0, block_length=None):
+    """
+    Compute residual statistics and recommend a sampling method.
+    """
 
-        l = int(len(residuals) ** (1/3))
+    residuals = np.asarray(residuals)
 
-    else:
+    mean_value = np.mean(residuals)
+    std_value = np.std(residuals)
+    skewness = skew(residuals)
+    kurtosis_value = kurtosis(residuals)
 
-        l = block_length
-    
-    characterization = {
-    "Sample count": float(len(residuals)),
-    "mean": float(mean_result),
-    "std": float(sd_result),
-    "skew": float(skew_result),
-    "kurtosis": float(kurtosis_result),
-    "shapiro_pvalue": float(shapiro_wilk_result),
-    "ljung_box_pass": bool(ljung_box_result),
-    "optimal_block_length": int(l),
-    "recommended_method": recommended_method
-}
-    
-    return characterization
+    shapiro_pvalue = shapiro(residuals).pvalue
 
-def diagnostic_plot(residuals, title):
+    ljung_box_table = acorr_ljungbox(
+        residuals,
+        lags=[1, 5, 10],
+        model_df=model_df,
+    )
 
-    fig, axes = plt.subplots(2,2,figsize=(12,8))
-    
-    axes[0,0].plot(residuals, alpha = 0.9)
-    axes[0,0].tick_params(axis='x', rotation=45)
-    axes[0,0].set_title(f"Residual Time Series of {title}")
+    ljungbox_pvalue = ljung_box_table["lb_pvalue"].iloc[-1]
+    ljung_box_pass = (ljung_box_table["lb_pvalue"] > 0.05).all()
 
-    plot_acf(residuals, ax=axes[0,1])
-    axes[0,1].set_title(f"Residual ACF of {title}")
+    if block_length is None:
+        block_length = int(len(residuals) ** (1 / 3))
 
-    axes[1,0].hist(residuals, bins= 'auto', density = True, alpha = 0.9)
+    recommended_method = recommend_sampling_method(
+        shapiro_pvalue,
+        ljung_box_pass,
+        skewness,
+        kurtosis_value,
+    )
+
+    return {
+        "sample_count": int(len(residuals)),
+        "mean": float(mean_value),
+        "std": float(std_value),
+        "skewness": float(skewness),
+        "kurtosis": float(kurtosis_value),
+        "shapiro_pvalue": float(shapiro_pvalue),
+        "ljungbox_pvalue": float(ljungbox_pvalue),
+        "ljung_box_pass": bool(ljung_box_pass),
+        "block_length": int(block_length),
+        "recommended_method": recommended_method,
+    }
+
+
+def recommend_sampling_method(
+    shapiro_pvalue,
+    ljung_box_pass,
+    skewness,
+    kurtosis_value,
+):
+    """
+    Recommend residual sampling method based on normality,
+    autocorrelation, skewness, and kurtosis.
+    """
+
+    normal = shapiro_pvalue > 0.05
+    independent = ljung_box_pass
+
+    low_skew = abs(skewness) < 0.5
+    low_kurtosis = abs(kurtosis_value) < 1
+
+    high_skew = abs(skewness) >= 1
+    high_kurtosis = abs(kurtosis_value) >= 3
+
+    if not independent:
+        return "block"
+
+    if normal and low_skew and low_kurtosis:
+        return "gaussian"
+
+    if high_skew or high_kurtosis:
+        return "kde"
+
+    return "empirical"
+
+
+def plot_residual_diagnostics(residuals, title=""):
+    """
+    Plot residual time series, ACF, histogram, and Q-Q plot.
+    """
+
+    residuals = np.asarray(residuals)
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 8))
+
+    axes[0, 0].plot(residuals, alpha=0.9)
+    axes[0, 0].tick_params(axis="x", rotation=45)
+    axes[0, 0].set_title(f"Residual Time Series {title}")
+
+    plot_acf(residuals, ax=axes[0, 1])
+    axes[0, 1].set_title(f"Residual ACF {title}")
+
+    axes[1, 0].hist(residuals, bins="auto", density=True, alpha=0.9)
 
     mu = np.mean(residuals)
     sigma = np.std(residuals)
 
-    x = np.linspace(min(residuals), max(residuals), 100)
+    x = np.linspace(np.min(residuals), np.max(residuals), 100)
     pdf = norm.pdf(x, mu, sigma)
 
-    axes[1, 0].plot(x, pdf, 'r-', linewidth=2)
-    axes[1, 0].set_title(f"Residual Histogram of {title}")
+    axes[1, 0].plot(x, pdf, linewidth=2)
+    axes[1, 0].set_title(f"Residual Histogram {title}")
 
-    probplot(residuals, dist="norm", plot=axes[1,1])
-    axes[1,1].set_title(f"Residual Q-Q Plot of {title}")
+    probplot(residuals, dist="norm", plot=axes[1, 1])
+    axes[1, 1].set_title(f"Residual Q-Q Plot {title}")
 
     plt.tight_layout()
     plt.show()

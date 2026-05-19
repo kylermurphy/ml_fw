@@ -10,119 +10,6 @@ import pandas as pd
 import warnings
 
 
-def create(dat: pd.DataFrame, feat_col: list = None, y_col: list = None,
-           log_col: list = None, lt_col: list = None,
-           t_col: list = None) -> pd.DataFrame:
-    """Create a feature (x_dat) and dependent (y_dat) data set.
-
-    For use in SciKit Learn models.
-
-    Parameters
-    ----------
-    dat : pd.DataFrame
-        A pandas dataframe containing all the data.
-    feat_col : list, optional
-        Columns to add to the feature data.
-        The default is None.
-    y_col : list, optional
-        Columns to add to the dependent.
-        The default is None.
-    log_col : list, optional
-        Columns from the passed DataFrame that
-        should be logged. In Heliophysics variables
-        often span several order of magnitude and may
-        require the data to be logged (semi-normalized).
-        The default is None.
-    lt_col : list, optional
-        Columns from the passed DataFrame that
-        should be converted to cyclical arguments.
-        For example longitude, local time, or
-        magnetic local time.
-        The default is None.
-    t_col : list, optional
-        If looking at time-series data the time
-        column that the user would like to keep.
-        The default is None.
-
-    Raises
-    ------
-    TypeError
-        If feat_col and y_col are not lists.
-        feat_col and y_col are both required
-        keyword arguments
-
-    Returns
-    -------
-    x_dat : pd.DataFrame
-        The feature data.
-    y_dat : pd.DataFrame
-        The dependent data.
-    """
-    # create a list of feature and y data columns
-    # independent and dependent data
-    if not isinstance(feat_col,list) or \
-       not isinstance(y_col,list):
-        raise TypeError('feat_col and y_col must both be lists')
-
-    dat_col = feat_col + y_col
-
-    # if a time column was passed add it to the list
-    if isinstance(t_col,list):
-        dat_col = dat_col + t_col
-    if isinstance(lt_col,list):
-        dat_col = dat_col + lt_col
-
-    # creaate a new dataframe from the columns of the
-    # passed dataframe
-    x_dat = dat[dat_col].dropna().copy()
-
-    # from the feature columns log
-    # a subset of passed columns and
-    # drop the non-logged columns
-    if isinstance(log_col,list):
-        for i in log_col:
-            try:
-                x_dat[f'log10_{i}'] = np.log10(x_dat[i])
-                x_dat = x_dat.drop(columns=i)
-            except Exception:
-                warnings.warn(f'Could not log column {i}')
-
-    # from a subset of columns convert local time
-    # or longitude columns to cyclical variables using
-    # cos and sin so that there are no discontinuites
-    # across 360->0 or 24h->0h
-    if isinstance(lt_col,list):
-        for i in lt_col:
-            try:
-                if x_dat[i].max() > 24:
-                    x_dat[f'cos_{i}'] = np.cos(x_dat[i] * 2 * np.pi / 360.)
-                    x_dat[f'sin_{i}'] = np.sin(x_dat[i] * 2 * np.pi / 360.)
-                else:
-                    x_dat[f'cos_{i}'] = np.cos(x_dat[i] * 2 * np.pi / 24.)
-                    x_dat[f'sin_{i}'] = np.sin(x_dat[i] * 2 * np.pi / 24.)
-
-                x_dat = x_dat.drop(columns=i)
-            except Exception:
-                print(f'Could not add {i} as a cos/sin time column')
-
-    # drop values which are undefined
-    # check for numpy undefinde
-    # then use pandas dropna()
-    x_dat = x_dat[~x_dat.isin([np.nan, np.inf, -np.inf]).any(axis=1)].dropna()
-
-    # get y data from the final dataframe
-    # and drop it from the feature data
-    y_dat = x_dat[y_col].copy()
-    x_dat = x_dat.drop(columns=y_col)
-
-    return x_dat, y_dat
-
-
-
-# =====================================================================
-# REFACTORED VERSIONS FOR COMPARISON
-# =====================================================================
-
 def _apply_log_transformation(dataframe: pd.DataFrame, 
                               log_columns: list[str]) -> pd.DataFrame:
     """Apply log10 transformation to specified columns.
@@ -211,16 +98,17 @@ def _validate_required_columns(dataframe: pd.DataFrame,
         raise ValueError(f'Missing columns in dataframe: {missing}')
 
 
-def create_ref(dataframe: pd.DataFrame, 
+def create(dataframe: pd.DataFrame, 
                feature_columns: list[str],
                target_columns: list[str],
                log_columns: list[str] | None = None, 
                cyclical_columns: list[str] | None = None,
                time_column: list[str] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
-    """Create feature and target datasets for ML models (refactored version).
+    """Create feature and target datasets for ML models.
     
     Handles feature engineering including log transformation and cyclical
-    variable encoding, commonly used in heliophysics and similar domains.
+    variable encoding (for local time and longitude), commonly used in heliophysics 
+    and similar domains.
 
     Parameters
     ----------

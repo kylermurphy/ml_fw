@@ -118,124 +118,6 @@ def create(dat: pd.DataFrame, feat_col: list = None, y_col: list = None,
     return x_dat, y_dat
 
 
-def feat_shift(s_dat: pd.DataFrame,
-               t_col='DateTime',
-               periods: list[int] | None = None,
-               unit: str = 'min',
-               tolerance: pd.Timedelta = None,
-               drop_orig: bool = False,
-               drop_na: bool = True) -> pd.DataFrame:
-    """Time shift features.
-
-    Function to shift feature data in time so
-    that time lags can be applied to feature
-    vectors.
-
-    Parameters
-    ----------
-    s_dat : pd.DataFrame
-        A dataframe with the features.
-        The default is 'pd.DataFrame'
-    t_col : TYPE, optional
-        The column or index where time is located. This is used
-        to shift the data.
-        The default is 'DateTime'. 'index' or 0 will use the
-        index as the time array
-    periods : list[int], optional
-        A list integer peiods to shift the data. The unit of the shift
-        can be set using 'unit'
-        The default is [5], which will shift the data 5 minutes.
-        An arbitrary number of shifts can be suplied.
-    unit : str, optional
-        The unit of the time shift periods.
-        Should be of similar types as pd.Timedelta.
-        The default is 'min'.
-    tolerance : pd.Timedelta, optional
-        The max differnce between the orignal time index and time shifted
-        index to rematch variables. If this is not set then the time column
-        is used to determine a nominal resolution 'res' in seconds and
-        tolerance is set as (res/2)+1.
-        The default is None.
-    drop_orig : bool, optional
-        In some cases the orignal data is not required, only the time shifted
-        data. This will drop the original data columns
-        The default is False.
-    drop_na : bool, optional
-        The time shift creates a number of NaN at the begining of the
-        new DataFrame, this drops those. The default is True.
-
-    Raises
-    ------
-    TypeError
-        If keywords are not correct type.
-    KeyError
-        If the time column can't be found in the DataFrame.
-
-    Returns
-    -------
-    s_dat : TYPE
-        A dataframe containing time shifted feature columns.
-    """
-    # get the index so we can
-    # add it back at the end
-    s_ind = s_dat.index.copy()
-
-    # if the time is the index
-    # reset the index so time is a column
-    if t_col == 'index' or t_col == 0:
-        s_dat = s_dat.reset_index(names='DateTime_idx9')
-        t_col = 'DateTime_idx9'
-        drop_dt = True
-
-    if periods is None:
-        periods = [5]
-    elif isinstance(periods,str):
-        periods = [periods]
-    elif not isinstance(periods,list):
-        raise TypeError('periods should be a string or a list')
-
-    # check if our time column exists
-    try:
-        t_dat = s_dat[t_col].copy()
-    except Exception:
-        print(f'{t_col} cannot be found')
-        raise KeyError(t_col)
-
-    # use the time column to get a nominal
-    # resolution of the timeseries
-    # if tolerance isn't defined this is
-    # used as tolerance
-    res = t_dat.reset_index(drop=True).diff().mode()
-    res = res.iloc[0].total_seconds() if not res.empty else 0
-    if not tolerance:
-        tolerance = pd.Timedelta(res / 2 + 1,unit='seconds')
-
-    # get the data columns
-    d_col = s_dat.columns.to_list()
-    d_col.remove(t_col)
-    # get the data
-    r_dat = s_dat.copy().drop(columns=t_col)
-    # begin shifting the data
-    for i in periods:
-        r_dat[t_col] = t_dat + pd.Timedelta(i,unit=unit)
-        r_suf = f' {i} {unit}'
-        s_dat = pd.merge_asof(s_dat,r_dat, on=t_col,
-                              direction='nearest',
-                              suffixes=('',r_suf),
-                              tolerance=tolerance)
-
-    # add the original index back in
-    s_dat = s_dat.set_index(s_ind)
-    if drop_dt:
-        s_dat = s_dat.drop(columns=t_col)
-    # drop the original columns
-    if drop_orig:
-        s_dat = s_dat.drop(columns=d_col)
-    # return only indexes with
-    if drop_na:
-        s_dat = s_dat.dropna()
-    return s_dat
-
 
 # =====================================================================
 # REFACTORED VERSIONS FOR COMPARISON
@@ -424,14 +306,14 @@ def _calculate_timeseries_tolerance(time_series: pd.Series) -> pd.Timedelta:
     return pd.Timedelta(resolution_seconds / 2 + 1, unit='seconds')
 
 
-def feat_shift_ref(dataframe: pd.DataFrame,
+def feat_shift(dataframe: pd.DataFrame,
                    time_column: str = 'DateTime',
                    periods: list[int] | int | None = None,
                    unit: str = 'min',
                    tolerance: pd.Timedelta | None = None,
                    drop_original: bool = False,
                    drop_na: bool = True) -> pd.DataFrame:
-    """Create time-lagged features for time-series data (refactored & optimized version).
+    """Create time-lagged features for time-series data.
     
     Shifts feature data in time to create lagged versions for use in
     predictive models. Optimized with early validation and minimal copying.
@@ -481,8 +363,10 @@ def feat_shift_ref(dataframe: pd.DataFrame,
         raise TypeError('periods must be an int or list of ints')
     
     # Handle time column as index BEFORE validation
+    # Save original index for restoration
     reset_time_index = False
     actual_time_col = time_column
+    original_index = dataframe.index.copy()
     if time_column == 'index':
         working_df = dataframe.reset_index(names='DateTime_idx9')
         actual_time_col = 'DateTime_idx9'
@@ -496,9 +380,6 @@ def feat_shift_ref(dataframe: pd.DataFrame,
     
     # Only copy working_df once, after validation
     working_df = working_df.copy()
-    
-    # Save original index for restoration
-    original_index = working_df.index.copy()
     
     # Get time series (no copy needed - not modifying original)
     time_series = working_df[actual_time_col]

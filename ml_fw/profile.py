@@ -185,10 +185,10 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                 cor_1 = _corrwith(cat_cor,f_col,y_col,cor_meth,numeric_only)
                 cor_2 = _corrwith(cat_not,f_col,y_col,cor_meth,numeric_only)
 
-                #cor_1 = cat_cor.corr(method=cor_meth,
-                #                     numeric_only=numeric_only)[y_col]
-                #cor_2 = cat_not.dropna().corr(method=cor_meth,
-                #                              numeric_only=numeric_only)[y_col]
+                # cor_1 = cat_cor.corr(method=cor_meth,
+                #                      numeric_only=numeric_only)[y_col]
+                # cor_2 = cat_not.dropna().corr(method=cor_meth,
+                #                               numeric_only=numeric_only)[y_col]
                 if len(y_col) > 1:
                     cor_1 = cor_1.add_prefix(f'{ck}==1:')
                     cor_2 = cor_2.add_prefix(f'{ck}!=1:')
@@ -204,11 +204,10 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                                           right_index=True)
             else:
                 cat_cor = base_dat.where(cv)
-                
                 cor_1 = _corrwith(cat_cor,f_col,y_col,cor_meth,numeric_only)
-                
-                #cor_1 = cat_cor.corr(method=cor_meth,
-                #                     numeric_only=numeric_only)[y_col]
+
+                # cor_1 = cat_cor.corr(method=cor_meth,
+                #                      numeric_only=numeric_only)[y_col]
                 if len(y_col) > 1:
                     cor_1 = cor_1.add_prefix(f'{ck}:')
                 else:
@@ -217,8 +216,8 @@ def cor_matrix(f_dat: pd.DataFrame | list,
                 cor_plot = cor_plot.merge(cor_1,
                                           left_index=True,
                                           right_index=True)
-    
     return cor_plot
+
 
 def _corrwith(df, f_col,y_col, method, numeric_only):
     """Compute correlations between feature columns and target columns.
@@ -257,7 +256,7 @@ def _corrwith(df, f_col,y_col, method, numeric_only):
     For multiple target columns, corrwith is called once per target and the
     results are concatenated. Both cases are faster than pd.DataFrame.corr
     which computes the full N×N matrix before slicing.
-    """    
+    """
     if len(y_col) == 1:
         return df[f_col].corrwith(df[y_col[0]], method=method,
                                   numeric_only=numeric_only).to_frame(y_col[0])
@@ -268,4 +267,4 @@ def _corrwith(df, f_col,y_col, method, numeric_only):
                                 numeric_only=numeric_only).rename(y)
              for y in y_col],
             axis=1
-        )    
+        )

@@ -1,3 +1,8 @@
+import matplotlib.pyplot as plt
+from matplotlib.colors import to_rgba
+from itertools import cycle
+
+
 def _format_x_axis(ax, x_centres, x_width):
     """
     Format x-axis tick marks and labels for better readability.

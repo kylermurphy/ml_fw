@@ -1,37 +1,151 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from statsmodels.graphics.tsaplots import plot_acf
-from scipy import stats
-from scipy.stats import norm, ks_2samp
 
-def diagnostic_plot(residuals, title):
+from scipy.stats import (
+    skew,
+    kurtosis,
+    shapiro,
+)
 
-    fig, axes = plt.subplots(2,2,figsize=(12,8))
-    
-    axes[0,0].plot(residuals, alpha = 0.9)
-    axes[0,0].tick_params(axis='x', rotation=45)
-    axes[0,0].set_title(f"Residual Time Series of {title}")
+from statsmodels.stats.diagnostic import acorr_ljungbox
 
-    plot_acf(residuals, ax=axes[0,1])
-    axes[0,1].set_title(f"Residual ACF of {title}")
+from .utils import _validate_1d_array
 
-    axes[1,0].hist(residuals, bins= 'auto', density = True, alpha = 0.9)
 
-    mu = np.mean(residuals)
-    sigma = np.std(residuals)
+# ============================================================
+# Residual Sampling Method Recommendation
+# ============================================================
 
-    x = np.linspace(min(residuals), max(residuals), 100)
-    pdf = norm.pdf(x, mu, sigma)
+def _recommend_method(
+    shapiro_pvalue: float,
+    ljungbox_pvalue: float,
+    skewness: float,
+    kurtosis_value: float,
+) -> str:
+    """
+    Recommend an appropriate residual sampling method
+    based on residual diagnostic statistics.
 
-    axes[1, 0].plot(x, pdf, 'r-', linewidth=2)
-    axes[1, 0].set_title(f"Residual Histogram of {title}")
+    Parameters
+    ----------
+    shapiro_pvalue : float
+        Shapiro-Wilk normality test p-value.
 
-    stats.probplot(residuals, dist="norm", plot=axes[1,1])
-    axes[1,1].set_title(f"Residual Q-Q Plot of {title}")
+    ljungbox_pvalue : float
+        Ljung-Box autocorrelation test p-value.
 
-    plt.tight_layout()
-    plt.show()
+    skewness : float
+        Residual skewness value.
 
-  
+    kurtosis_value : float
+        Residual kurtosis value.
 
-    return fig
+    Returns
+    -------
+    str
+        Recommended sampling method.
+    """
+
+    normal = shapiro_pvalue > 0.05
+
+    independent = ljungbox_pvalue > 0.05
+
+    low_skew = abs(skewness) < 0.5
+
+    low_kurtosis = abs(kurtosis_value) < 1
+
+    high_skew = abs(skewness) >= 1
+
+    high_kurtosis = abs(kurtosis_value) >= 3
+
+    if not independent:
+
+        return "block"
+
+    if normal and low_skew and low_kurtosis:
+
+        return "gaussian"
+
+    if high_skew or high_kurtosis:
+
+        return "kde"
+
+    return "empirical"
+
+
+# ============================================================
+# Residual Characterization
+# ============================================================
+
+def characterize_residuals(
+    residuals: np.ndarray,
+) -> dict:
+    """
+    Compute residual statistics and diagnostic tests.
+
+    Parameters
+    ----------
+    residuals : np.ndarray
+        Residual series from fitted model.
+
+    Returns
+    -------
+    dict
+        Dictionary containing:
+
+        - mean
+        - standard deviation
+        - skewness
+        - kurtosis
+        - Shapiro-Wilk p-value
+        - Ljung-Box p-value
+        - recommended sampling method
+        - estimated block length
+    """
+
+    residuals = _validate_1d_array(
+        residuals,
+        "residuals",
+    )
+
+    mean_value = np.mean(residuals)
+
+    std_value = np.std(residuals)
+
+    skewness = skew(residuals)
+
+    kurtosis_value = kurtosis(residuals)
+
+    shapiro_pvalue = shapiro(
+        residuals
+    ).pvalue
+
+    ljung_box_table = acorr_ljungbox(
+        residuals,
+        lags=[5,10,20],
+        return_df=True,
+    )
+
+    ljungbox_pvalue = float(
+        ljung_box_table["lb_pvalue"].min()
+    )
+
+    block_length = int(len(residuals) ** (1 / 3))
+      
+
+    recommended_method = _recommend_method(
+        shapiro_pvalue=shapiro_pvalue,
+        ljungbox_pvalue=ljungbox_pvalue,
+        skewness=skewness,
+        kurtosis_value=kurtosis_value,
+    )
+
+    return {
+        "mean": float(mean_value),
+        "std": float(std_value),
+        "skewness": float(skewness),
+        "kurtosis": float(kurtosis_value),
+        "shapiro_pvalue": float(shapiro_pvalue),
+        "ljungbox_pvalue": float(ljungbox_pvalue),
+        "recommended_method": recommended_method,
+        "block_length": int(block_length),
+    }

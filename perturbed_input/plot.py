@@ -74,7 +74,7 @@ def plot_residual_diagnostics(
     fig, axes = plt.subplots(
         2,
         2,
-        figsize=(12, 8),
+        figsize=(16, 8),
     )
 
     # Residual time series
@@ -277,7 +277,7 @@ def plot_ensemble(
         ensemble.shape[0],
     )
 
-    plt.figure(figsize=(10, 5))
+    plt.figure(figsize=(16, 6))
 
     for i in range(n_show):
 
@@ -304,21 +304,13 @@ def plot_ensemble(
 
     plt.tight_layout()
 
-    plt.show()
-
     if show_boxplot:
 
-        plt.figure(figsize=(10, 5))
+        plt.figure(figsize=(16, 6))
 
         plt.boxplot(
             ensemble.T,
             showfliers=False,
-        )
-
-        plt.xticks(
-            ticks=np.arange(1, len(x) + 1),
-            labels=x,
-            rotation=45,
         )
 
         plt.title(
@@ -329,7 +321,10 @@ def plot_ensemble(
 
         plt.ylabel("Value")
 
-        plt.xticks(rotation=45)
+        plt.xticks(
+            rotation=45,
+            ha="right",
+        )
 
         plt.tight_layout()
 

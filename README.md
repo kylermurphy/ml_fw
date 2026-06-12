@@ -48,10 +48,10 @@ This is useful for uncertainty quantification, sensitivity testing, and time-ser
 
 The perturbation workflow has four main steps:
 
-1. Fit an ARIMA model to the input signal.
+1. Fit an ARIMA model to the input signal (or a separate reference signal).
 2. Extract the residuals from the fitted model.
 3. Analyze the residuals using statistical diagnostics.
-4. Resample the residuals and add them back to the fitted signal.
+4. Resample the residuals and add them to the input signal.
 
 The residual is defined as:
 
@@ -65,12 +65,16 @@ where:
 
 Each perturbed ensemble member is generated as:
 
-    y_i = y_hat + e_i
+    y_i = y + e_i
 
 where:
 
-- `y_hat` is the fitted ARIMA signal
+- `y` is the original input signal
 - `e_i` is a newly sampled residual sequence
+
+When `fit_ts` is provided, the residuals are derived from a separate reference
+series rather than from `y` itself, but the sampled residuals are still added
+to `y`.
 
 ---
 
@@ -171,6 +175,7 @@ This means the package can be used with any field that produces ordered numerica
         fit=None,
         auto_arima_kwargs=None,
         kde_bandwidth=None,
+        fit_ts=None,
     )
 
 Generates an ensemble of perturbed time series.
@@ -187,9 +192,10 @@ Generates an ensemble of perturbed time series.
 | `m` | int | Seasonal period (e.g. `m=24` for hourly data with a daily cycle) |
 | `seed` | int or None | Random seed for reproducible sampling |
 | `verbose` | bool | Print selected ARIMA order and sampling method |
-| `fit` | dict or None | Pre-fitted result from `fit_model()` — skips refitting |
+| `fit` | dict or None | Pre-fitted result from `fit_model()` — skips refitting. Cannot be used with `fit_ts`. |
 | `auto_arima_kwargs` | dict or None | Extra keyword arguments for `pmdarima.auto_arima()` |
 | `kde_bandwidth` | float, str, or None | KDE bandwidth (`'scott'`, `'silverman'`, or scalar) |
+| `fit_ts` | array-like or None | Reference series used to derive the noise model. ARIMA is fitted to `fit_ts` and its residuals are sampled and added to `y`. May be a different length than `y`. Cannot be used with `fit`. |
 
 ### Supported Methods
 

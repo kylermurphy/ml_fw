@@ -20,6 +20,7 @@ def generate_perturbations(
     fit: Optional[dict] = None,
     auto_arima_kwargs: Optional[dict[str, Any]] = None,
     kde_bandwidth: "float | str | None" = None,
+    fit_ts: Optional[np.ndarray] = None,
 ) -> np.ndarray:
     """
     Generate an ensemble of perturbed time series.
@@ -47,17 +48,25 @@ def generate_perturbations(
     fit : dict or None, optional
         Pre-fitted result from fit_model(). Skips ARIMA fitting when provided,
         which avoids the cost of refitting when comparing methods or seeds.
+        Cannot be used together with fit_ts.
     auto_arima_kwargs : dict or None, optional
         Additional keyword arguments for pmdarima.auto_arima().
         Ignored when fit is provided.
     kde_bandwidth : float, str, or None, optional
         Bandwidth for KDE sampling ('scott', 'silverman', or a scalar float).
         Only used when method='kde' or auto-selection chooses 'kde'.
+    fit_ts : array-like or None, optional
+        Reference time series used to derive the residual noise model.
+        When provided, ARIMA is fitted to fit_ts and its residuals are sampled
+        and added to y. Useful when the noise structure should come from a
+        separate (e.g. longer or historical) dataset. fit_ts may have a
+        different length than y. Cannot be used together with fit.
 
     Returns
     -------
     np.ndarray
         Ensemble array with shape (n_ensemble, n).
+        Each member is y + sampled_residuals.
     """
     y = _validate_1d_array(y, "y")
 
@@ -77,19 +86,27 @@ def generate_perturbations(
         if block_length > len(y):
             raise ValueError("block_length cannot be larger than len(y).")
 
+    if fit_ts is not None and fit is not None:
+        raise ValueError("fit and fit_ts cannot both be provided.")
+
     rng = np.random.default_rng(seed)
 
-    if fit is not None:
-        _required = {"model", "fitted", "residuals", "order", "seasonal_order", "aic"}
-        missing = _required - set(fit)
-        if missing:
-            raise ValueError(f"fit dict is missing required keys: {missing}.")
-        if len(fit["fitted"]) != len(y):
-            raise ValueError("fit['fitted'] length must match len(y).")
+    if fit_ts is not None:
+        fit_ts = _validate_1d_array(fit_ts, "fit_ts")
+        _source_fit = fit_model(fit_ts, seasonal=seasonal, m=m, auto_arima_kwargs=auto_arima_kwargs)
     else:
-        fit = fit_model(y, seasonal=seasonal, m=m, auto_arima_kwargs=auto_arima_kwargs)
+        if fit is not None:
+            _required = {"model", "fitted", "residuals", "order", "seasonal_order", "aic"}
+            missing = _required - set(fit)
+            if missing:
+                raise ValueError(f"fit dict is missing required keys: {missing}.")
+            if len(fit["fitted"]) != len(y):
+                raise ValueError("fit['fitted'] length must match len(y).")
+            _source_fit = fit
+        else:
+            _source_fit = fit_model(y, seasonal=seasonal, m=m, auto_arima_kwargs=auto_arima_kwargs)
 
-    residuals = fit["residuals"]
+    residuals = _source_fit["residuals"]
 
     # Only run the full diagnostic suite when the results are actually needed.
     needs_diagnostics = method == "auto" or block_length is None
@@ -102,7 +119,9 @@ def generate_perturbations(
         block_length = characterization["block_length"]
 
     if verbose:
-        print(f"  ARIMA order      : {fit['order']}  seasonal: {fit['seasonal_order']}")
+        noise_source = "fit_ts" if fit_ts is not None else "y"
+        print(f"  Noise source     : {noise_source}")
+        print(f"  ARIMA order      : {_source_fit['order']}  seasonal: {_source_fit['seasonal_order']}")
         print(f"  Sampling method  : {method}")
         print(f"  Block length     : {block_length}")
 
@@ -121,6 +140,6 @@ def generate_perturbations(
             kde=fitted_kde,
             kde_bandwidth=kde_bandwidth,
         )
-        ensemble[i] = fit["fitted"] + sampled
+        ensemble[i] = y + sampled
 
     return ensemble

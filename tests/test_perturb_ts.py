@@ -134,6 +134,24 @@ def test_prefitted_model_with_wrong_length_raises():
 
 
 # ---------------------------------------------------------------------------
+# generate_perturbations — fit_ts
+# ---------------------------------------------------------------------------
+
+def test_fit_ts_different_length_produces_correct_shape():
+    """fit_ts may be a different length than y; output shape is (n_ensemble, len(y))."""
+    y = make_ar1(n=100, phi=0.5)
+    fit_ts = make_ar1(n=300, phi=0.5)
+    ensemble = generate_perturbations(y, n_ensemble=10, fit_ts=fit_ts, seed=42)
+    assert ensemble.shape == (10, len(y))
+
+
+def test_fit_ts_and_fit_together_raises():
+    y = make_ar1(n=100)
+    with pytest.raises(ValueError, match="cannot both be provided"):
+        generate_perturbations(y, fit=fit_model(y), fit_ts=make_ar1(n=200))
+
+
+# ---------------------------------------------------------------------------
 # generate_perturbations — value-level
 # ---------------------------------------------------------------------------
 

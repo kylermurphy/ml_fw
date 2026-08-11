@@ -176,9 +176,46 @@ def test_invalid_n_ensemble_raises():
         generate_perturbations(make_ar1(n=100), n_ensemble=0)
 
 
-def test_non_1d_input_raises():
+def test_invalid_ndim_raises():
     with pytest.raises(ValueError):
-        generate_perturbations(np.ones((10, 2)))
+        generate_perturbations(np.ones((10, 2, 3)))
+
+
+def test_mismatched_fit_ts_series_count_raises():
+    y = make_ar1(n=100, phi=0.5)
+    y2 = np.column_stack([y, make_ar1(n=100, phi=0.3, seed=2)])
+    with pytest.raises(ValueError, match="same number of series"):
+        generate_perturbations(y2, fit_ts=make_ar1(n=200))
+
+
+# ---------------------------------------------------------------------------
+# generate_perturbations — multi-series
+# ---------------------------------------------------------------------------
+
+def test_2d_input_produces_3d_ensemble():
+    y = np.column_stack([make_ar1(n=150, phi=0.7, seed=1), make_ar1(n=150, phi=0.2, seed=2)])
+    ensemble = generate_perturbations(y, n_ensemble=10, method="gaussian", seed=42)
+    assert ensemble.shape == (10, y.shape[0], 2)
+
+
+def test_2d_input_matches_1d_per_series():
+    """Perturbing a series inside a 2D call must match perturbing it alone."""
+    y1 = make_ar1(n=150, phi=0.7, seed=1)
+    y2 = make_ar1(n=150, phi=0.2, seed=2)
+    y = np.column_stack([y1, y2])
+    ensemble_2d = generate_perturbations(y, n_ensemble=5, method="gaussian", seed=42)
+    ensemble_1d = generate_perturbations(y1, n_ensemble=5, method="gaussian", seed=42)
+    np.testing.assert_array_equal(ensemble_2d[:, :, 0], ensemble_1d)
+
+
+def test_block_sampling_shared_across_series():
+    """Series sampled with method='block' should reuse the same block start
+    positions per ensemble member, so identical residuals produce identical
+    sampled noise."""
+    y1 = make_ar1(n=150, phi=0.7, seed=1)
+    y = np.column_stack([y1, y1])  # two identical series
+    ensemble = generate_perturbations(y, n_ensemble=5, method="block", seed=42)
+    np.testing.assert_array_equal(ensemble[:, :, 0], ensemble[:, :, 1])
 
 
 # ---------------------------------------------------------------------------

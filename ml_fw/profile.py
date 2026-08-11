@@ -41,7 +41,7 @@ def _corrwith(df, f_col,y_col, method, numeric_only):
     For multiple target columns, corrwith is called once per target and the
     results are concatenated. Both cases are faster than pd.DataFrame.corr
     which computes the full N×N matrix before slicing.
-    """    
+    """
     if len(y_col) == 1:
         return df[f_col].corrwith(df[y_col[0]], method=method,
                                   numeric_only=numeric_only).to_frame(y_col[0])

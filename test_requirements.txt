@@ -1,1 +1,4 @@
 flake8
+m2r2
+sphinx-build
+sphinx_rtd_theme

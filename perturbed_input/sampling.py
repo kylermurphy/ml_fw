@@ -43,6 +43,52 @@ def _sample_block(
     return residuals[block_indices.ravel()][:n_samples]
 
 
+def _draw_block_indices(
+    n: int,
+    n_samples: int,
+    block_length: int,
+    rng: np.random.Generator,
+    n_ensemble: int,
+) -> np.ndarray:
+    """
+    Draw block-bootstrap gather indices for n_ensemble replicates at once.
+
+    This is the vectorized-across-ensemble counterpart of `_sample_block`:
+    it returns indices only (no residuals applied), so the same matrix can
+    be used to index into different series' residual arrays of length n.
+    That is what lets multiple time series share identical block start
+    positions within an ensemble member when method='block'.
+
+    Parameters
+    ----------
+    n : int
+        Length of the residual series the indices will be applied to.
+    n_samples : int
+        Number of samples to generate per ensemble member.
+    block_length : int
+        Length of each contiguous bootstrap block.
+    rng : np.random.Generator
+        NumPy random number generator.
+    n_ensemble : int
+        Number of independent ensemble members to draw indices for.
+
+    Returns
+    -------
+    np.ndarray
+        Integer index array of shape (n_ensemble, n_samples), valid for
+        indexing into any 1-D residual array of length n.
+    """
+    if block_length > n:
+        raise ValueError("block_length cannot be larger than the residual length.")
+
+    starts = np.arange(0, n - block_length + 1)
+    n_blocks = int(np.ceil(n_samples / block_length))
+    chosen_starts = rng.choice(starts, size=(n_ensemble, n_blocks), replace=True)
+
+    block_indices = chosen_starts[..., None] + np.arange(block_length)
+    return block_indices.reshape(n_ensemble, -1)[:, :n_samples]
+
+
 def _sample_gaussian(residuals, n_samples, block_length, rng, kde, kde_bandwidth):
     mu = np.mean(residuals)
     sigma = np.std(residuals, ddof=1)

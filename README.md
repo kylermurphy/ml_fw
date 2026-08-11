@@ -31,13 +31,16 @@ This is useful for uncertainty quantification, sensitivity testing, and time-ser
 
     perturbed_input/
     │
+    ├── __init__.py       ← public API exports
     ├── diagnostics.py
+    ├── ensemble.py       ← generate_perturbations (main entry point)
     ├── fit.py
-    ├── perturb_ts.py
+    ├── plot.py
     ├── sampling.py
-    ├── plotting.py
-    ├── utils.py
-    └── tests/
+    └── utils.py
+
+    tests/
+    examples/
 
 ---
 
@@ -45,10 +48,10 @@ This is useful for uncertainty quantification, sensitivity testing, and time-ser
 
 The perturbation workflow has four main steps:
 
-1. Fit an ARIMA model to the input signal.
+1. Fit an ARIMA model to the input signal (or a separate reference signal).
 2. Extract the residuals from the fitted model.
 3. Analyze the residuals using statistical diagnostics.
-4. Resample the residuals and add them back to the fitted signal.
+4. Resample the residuals and add them to the input signal.
 
 The residual is defined as:
 
@@ -62,12 +65,16 @@ where:
 
 Each perturbed ensemble member is generated as:
 
-    y_i = y_hat + e_i
+    y_i = y + e_i
 
 where:
 
-- `y_hat` is the fitted ARIMA signal
+- `y` is the original input signal
 - `e_i` is a newly sampled residual sequence
+
+When `fit_ts` is provided, the residuals are derived from a separate reference
+series rather than from `y` itself, but the sampled residuals are still added
+to `y`.
 
 ---
 
@@ -97,7 +104,7 @@ Install the package locally:
 
 ## Basic Usage
 
-    from perturbed_input.perturb_ts import generate_perturbations
+    from perturbed_input import generate_perturbations
 
     ensemble = generate_perturbations(
         y=data,
@@ -135,7 +142,7 @@ Example using a CSV file:
 
     import pandas as pd
 
-    from perturbed_input.perturb_ts import generate_perturbations
+    from perturbed_input import generate_perturbations
 
     df = pd.read_csv("data.csv")
 
@@ -162,7 +169,13 @@ This means the package can be used with any field that produces ordered numerica
         method="auto",
         block_length=None,
         seasonal=False,
+        m=1,
         seed=None,
+        verbose=False,
+        fit=None,
+        auto_arima_kwargs=None,
+        kde_bandwidth=None,
+        fit_ts=None,
     )
 
 Generates an ensemble of perturbed time series.
@@ -176,7 +189,13 @@ Generates an ensemble of perturbed time series.
 | `method` | str | Residual sampling method |
 | `block_length` | int or None | Block length for block bootstrap sampling |
 | `seasonal` | bool | Whether to allow seasonal ARIMA terms |
+| `m` | int | Seasonal period (e.g. `m=24` for hourly data with a daily cycle) |
 | `seed` | int or None | Random seed for reproducible sampling |
+| `verbose` | bool | Print selected ARIMA order and sampling method |
+| `fit` | dict or None | Pre-fitted result from `fit_model()` — skips refitting. Cannot be used with `fit_ts`. |
+| `auto_arima_kwargs` | dict or None | Extra keyword arguments for `pmdarima.auto_arima()` |
+| `kde_bandwidth` | float, str, or None | KDE bandwidth (`'scott'`, `'silverman'`, or scalar) |
+| `fit_ts` | array-like or None | Reference series used to derive the noise model. ARIMA is fitted to `fit_ts` and its residuals are sampled and added to `y`. May be a different length than `y`. Cannot be used with `fit`. |
 
 ### Supported Methods
 
@@ -198,7 +217,7 @@ Returns a NumPy array with shape:
 
 The `fit_model` function fits an ARIMA model to the input signal.
 
-    from perturbed_input.fit import fit_model
+    from perturbed_input import fit_model
 
     fit = fit_model(
         y=data,
@@ -226,7 +245,7 @@ The ARIMA model is selected automatically using:
 
 Residuals are analyzed using the `characterize_residuals` function.
 
-    from perturbed_input.diagnostics import characterize_residuals
+    from perturbed_input import characterize_residuals
 
     stats = characterize_residuals(residuals)
 
@@ -514,7 +533,7 @@ The module includes plotting utilities for residual diagnostics and ensemble vis
 
 ### Residual Diagnostic Plot
 
-    from perturbed_input.plotting import plot_residual_diagnostics
+    from perturbed_input import plot_residual_diagnostics
 
     plot_residual_diagnostics(
         x=None,
@@ -542,28 +561,37 @@ These plots help determine whether the residuals are:
 
 ### Ensemble Plot
 
-    from perturbed_input.plotting import plot_ensemble
+    from perturbed_input import plot_ensemble
 
-    plot_ensemble(
+    fig = plot_ensemble(
         x=None,
         y=data,
         ensemble=ensemble,
         n_show=50,
         title="Perturbed Ensemble",
-        show_stats=True,
         show_boxplot=False,
     )
 
-This plots the original signal together with selected ensemble members.
+This plots the original signal together with selected ensemble members and
+returns the `matplotlib.figure.Figure` for further customisation.
 
-If `show_stats=True`, the function returns:
+### Ensemble Statistics
+
+    from perturbed_input import compute_ensemble_stats
+
+    stats = compute_ensemble_stats(x=None, y=data, ensemble=ensemble)
+
+Returns a dictionary with pointwise statistics at each time step:
 
     {
         "x": x,
-        "mean": ensemble_mean,
-        "median": ensemble_median,
-        "min": ensemble_min,
-        "max": ensemble_max,
+        "mean": ...,
+        "median": ...,
+        "std": ...,
+        "min": ...,
+        "max": ...,
+        "q05": ...,   # 5th percentile
+        "q95": ...,   # 95th percentile
     }
 
 ---
@@ -596,11 +624,13 @@ Both calls will generate the same perturbation ensemble.
 
     import numpy as np
 
-    from perturbed_input.fit import fit_model
-    from perturbed_input.diagnostics import characterize_residuals
-    from perturbed_input.perturb_ts import generate_perturbations
-    from perturbed_input.plotting import plot_residual_diagnostics
-    from perturbed_input.plotting import plot_ensemble
+    from perturbed_input import (
+        fit_model,
+        characterize_residuals,
+        generate_perturbations,
+        plot_residual_diagnostics,
+        plot_ensemble,
+    )
 
 
     rng = np.random.default_rng(42)

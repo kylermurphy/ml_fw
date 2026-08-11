@@ -2,8 +2,8 @@ import numpy as np
 import pytest
 from statsmodels.tsa.arima_process import ArmaProcess
 
-from perturbed_input import fit_model, characterize_residuals, generate_perturbations
-from perturbed_input.sampling import _sample_block
+from ml_fw.perturbed_input import fit_model, characterize_residuals, generate_perturbations
+from ml_fw.perturbed_input.sampling import _sample_block
 
 
 def make_ar1(n=300, phi=0.7, seed=1):

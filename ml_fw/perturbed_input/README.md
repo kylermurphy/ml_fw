@@ -2,7 +2,7 @@
 
 A standalone Python module for generating perturbed time series for ensemble modelling workflows using ARIMA residual resampling.
 
-The module fits an ARIMA model to a univariate input time series, extracts the model residuals, characterizes those residuals statistically, and resamples them to generate an ensemble of statistically plausible perturbed signals.
+The module fits an ARIMA model to an input time series (single or multiple series at once), extracts the model residuals, characterizes those residuals statistically, and resamples them to generate an ensemble of statistically plausible perturbed signals. When generating ensembles for co-perturbed series (e.g., correlated measurements from multiple instruments), series can share block-bootstrap start positions to stay time-aligned.
 
 This is useful for uncertainty quantification, sensitivity testing, and time-series ensemble modelling workflows where multiple realistic versions of an input signal are needed.
 
@@ -18,7 +18,8 @@ This is useful for uncertainty quantification, sensitivity testing, and time-ser
 - Empirical bootstrap sampling
 - Kernel density estimation sampling
 - Moving block bootstrap sampling
-- Ensemble perturbation generation
+- Ensemble perturbation generation (single or multi-series, vectorized)
+- Block-sharing for co-perturbed series (time-aligned ensembles)
 - Residual diagnostic plotting
 - Ensemble visualization
 - Reproducible random seeding
@@ -27,7 +28,7 @@ This is useful for uncertainty quantification, sensitivity testing, and time-ser
 
 ---
 
-## Project Structure
+## Structure
 
     perturbed_input/
     │
@@ -78,31 +79,9 @@ to `y`.
 
 ---
 
-## Installation
-
-Clone the repository:
-
-    git clone <repository-url>
-    cd perturbed-input
-
-Install the package locally:
-
-    pip install -e .
-
----
-
-## Dependencies
-
-- numpy
-- scipy
-- matplotlib
-- statsmodels
-- pmdarima
-- pytest
-
----
-
 ## Basic Usage
+
+### Single-Series Input
 
     from perturbed_input import generate_perturbations
 
@@ -114,31 +93,52 @@ Install the package locally:
         seed=42,
     )
 
-The returned `ensemble` array has shape:
-
-    (n_ensemble, n_samples)
+The returned `ensemble` array has shape `(n_ensemble, len(data))`.
 
 For example, if the input signal has 500 samples and `n_ensemble=100`, the output shape will be:
 
     (100, 500)
 
+### Multi-Series Input
+
+For multiple series (e.g., correlated time series from several instruments), pass a 2-D array:
+
+    # y has shape (500, 3) — three series, each with 500 samples
+    y = np.array([...]).reshape(500, 3)
+
+    ensemble = generate_perturbations(
+        y=y,
+        n_ensemble=100,
+        method="auto",
+        seasonal=False,
+        seed=42,
+    )
+
+The returned `ensemble` array has shape `(n_ensemble, npts, n_series)`:
+
+    (100, 500, 3)
+
+Each series is fit and diagnosed independently. When the method is `'block'`, series using block bootstrap share block-start positions per ensemble member, keeping co-perturbed series time-aligned.
+
 ---
 
 ## Input Data Requirements
 
-The module currently accepts a clean, univariate numeric time series.
+The module accepts clean numeric time series data: either a single series (1-D) or multiple series (2-D, one per column).
 
-Users are responsible for loading their own dataset, selecting the target variable, and preprocessing the data before calling the perturbation functions.
+Users are responsible for loading their own dataset, selecting the target variable(s), and preprocessing the data before calling the perturbation functions.
 
 The input `y` should be:
 
-- one-dimensional
-- numeric
-- at least 10 samples long
-- free of missing values
-- ordered in time
+- **1-D array** `(n,)` for a single series, or **2-D array** `(npts, n_series)` for multiple series.
+- **numeric** (int or float)
+- **at least 10 samples long** (`npts >= 10`)
+- **free of missing values** (no NaN)
+- **ordered in time**
 
-Example using a CSV file:
+When `y` is 2-D, each column is treated as an independent time series: fit, diagnosed, and resampled separately. The output ensemble then has shape `(n_ensemble, npts, n_series)`.
+
+**Example using a CSV file (single series):**
 
     import pandas as pd
 
@@ -155,7 +155,21 @@ Example using a CSV file:
         seed=42,
     )
 
-This means the package can be used with any field that produces ordered numerical observations over time, as long as the data is converted into a clean one-dimensional array before use.
+**Example using multiple series from a CSV:**
+
+    # Load multiple columns from a CSV
+    df = pd.read_csv("data.csv", usecols=["series_1", "series_2", "series_3"])
+    y = df.to_numpy()  # shape (n, 3)
+
+    ensemble = generate_perturbations(
+        y=y,
+        n_ensemble=100,
+        method="auto",
+        seed=42,
+    )
+    # ensemble.shape == (100, n, 3)
+
+The package can be used with any field that produces ordered numerical observations over time, as long as the data is converted into a clean array (1-D or 2-D) before use.
 
 ---
 
@@ -184,32 +198,114 @@ Generates an ensemble of perturbed time series.
 
 | Parameter | Type | Description |
 |---|---|---|
-| `y` | array-like | Input univariate time series |
+| `y` | array-like | Input time series. 1-D array `(n,)` for a single series, or 2-D array `(npts, n_series)` for multiple series. |
 | `n_ensemble` | int | Number of perturbed realizations to generate |
-| `method` | str | Residual sampling method |
-| `block_length` | int or None | Block length for block bootstrap sampling |
-| `seasonal` | bool | Whether to allow seasonal ARIMA terms |
-| `m` | int | Seasonal period (e.g. `m=24` for hourly data with a daily cycle) |
-| `seed` | int or None | Random seed for reproducible sampling |
-| `verbose` | bool | Print selected ARIMA order and sampling method |
-| `fit` | dict or None | Pre-fitted result from `fit_model()` — skips refitting. Cannot be used with `fit_ts`. |
-| `auto_arima_kwargs` | dict or None | Extra keyword arguments for `pmdarima.auto_arima()` |
-| `kde_bandwidth` | float, str, or None | KDE bandwidth (`'scott'`, `'silverman'`, or scalar) |
-| `fit_ts` | array-like or None | Reference series used to derive the noise model. ARIMA is fitted to `fit_ts` and its residuals are sampled and added to `y`. May be a different length than `y`. Cannot be used with `fit`. |
+| `method` | str | Residual sampling method: one of `'auto'`, `'gaussian'`, `'empirical'`, `'kde'`, or `'block'`. |
+| `block_length` | int or None | Block length for block bootstrap sampling. Auto-estimated per series when None. |
+| `seasonal` | bool | Whether to allow seasonal ARIMA terms. Ignored when `fit` is provided. |
+| `m` | int | Seasonal period (e.g. `m=24` for hourly data with a daily cycle). Ignored when `fit` is provided. |
+| `seed` | int or None | Random seed for reproducible sampling. |
+| `verbose` | bool | If True, print selected ARIMA order, sampling method, and noise source (fit_ts or y) for each series. |
+| `fit` | dict, list of dict, or None | Pre-fitted result(s) from `fit_model()` — skips refitting. For single-series input (1-D `y`), pass a dict. For multi-series input (2-D `y`), pass a list of one dict per series (in column order). Cannot be used with `fit_ts`. |
+| `auto_arima_kwargs` | dict or None | Extra keyword arguments for `pmdarima.auto_arima()`. Ignored when `fit` is provided. |
+| `kde_bandwidth` | float, str, or None | Bandwidth for KDE sampling: `'scott'`, `'silverman'`, or a scalar float. Only used when method is `'kde'`. |
+| `fit_ts` | array-like or None | Reference time series used to derive the residual noise model. 1-D array `(n,)` or 2-D array `(npts_fit, n_series)` with the same shape convention as `y`. ARIMA is fitted to `fit_ts` (per series) and its residuals are sampled and added to `y`. May have a different length than `y`, but must have the same number of series. Cannot be used with `fit`. |
+| `return_fitted` | bool | If True, return both the ensemble and the ARIMA fitted values as a tuple `(ensemble, fitted)`. Default is False (return only the ensemble array). |
 
 ### Supported Methods
 
-- `auto`
-- `gaussian`
-- `empirical`
-- `kde`
-- `block`
+- `auto` — Automatically select the sampling method based on residual diagnostics (per series).
+- `gaussian` — Assume residuals are normally distributed.
+- `empirical` — Bootstrap directly from the observed residuals.
+- `kde` — Kernel density estimation of the residual distribution.
+- `block` — Moving block bootstrap (for autocorrelated residuals).
+
+### Multi-Series Input
+
+When `y` is 2-D with shape `(npts, n_series)`, the module fits and perturbs each series independently while optionally keeping them time-aligned:
+
+- Each column of `y` is fit to an ARIMA model independently.
+- Residuals from each series are diagnosed and a sampling method is selected per series.
+- When the resolved method is `'block'`, series sharing the same block length will share block-start positions within each ensemble member. This keeps co-perturbed series (e.g., measurements from correlated instruments) time-aligned so that perturbations occur at the same times across columns.
+
+Example:
+
+```python
+import numpy as np
+from ml_fw.perturbed_input import generate_perturbations
+
+# Three time series, each with 500 samples
+y = np.random.randn(500, 3)
+
+ensemble = generate_perturbations(
+    y=y,
+    n_ensemble=100,
+    method="block",  # All series use block sampling, sharing block positions
+    seed=42,
+)
+
+# ensemble.shape == (100, 500, 3)
+# Access individual series: ensemble[:, :, 0]
+```
+
+### Getting the Fitted ARIMA Curve
+
+To plot the original series alongside the ARIMA model's fitted curve, use `return_fitted=True`:
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+from ml_fw.perturbed_input import generate_perturbations
+
+# Generate data
+t = np.arange(200)
+y = np.sin(2 * np.pi * t / 50) + 0.1 * np.random.randn(200)
+
+# Get both ensemble and fitted ARIMA curve
+ensemble, fitted = generate_perturbations(
+    y=y,
+    n_ensemble=50,
+    method="auto",
+    seed=42,
+    return_fitted=True,
+)
+
+# Plot original vs. ARIMA fit
+plt.plot(t, y, 'k-', linewidth=2, label="Original")
+plt.plot(t, fitted, 'r-', linewidth=2, alpha=0.7, label="ARIMA Fit")
+plt.legend()
+plt.show()
+
+# Plot ensemble members too
+fig, ax = plt.subplots(figsize=(12, 6))
+for i in range(min(30, ensemble.shape[0])):
+    ax.plot(t, ensemble[i], 'steelblue', alpha=0.2, linewidth=0.8)
+ax.plot(t, y, 'k-', linewidth=2, label="Original")
+ax.plot(t, fitted, 'r-', linewidth=2, label="ARIMA Fit")
+ax.legend()
+plt.show()
+```
+
+**Note:** When `fit_ts` is provided (a separate reference series), the returned `fitted` curve matches `fit_ts`'s length, not `y`'s length. You must handle x-axis alignment when plotting them together.
+
+### Vectorization
+
+The ensemble generation is vectorized across the ensemble dimension to avoid a per-member Python loop:
+- For Gaussian, empirical, and KDE methods, sampling is done in a single `rng` call with `n_samples = n_ensemble × npts`, then reshaped to `(n_ensemble, npts)`.
+- For block bootstrap, all block start indices for all ensemble members (and all series sharing a block length) are drawn in a single `rng.choice` call via `_draw_block_indices`.
+
+The per-series ARIMA fitting, diagnostics, and (when needed) KDE setup remain a Python loop because `pmdarima`, statistical tests, and `gaussian_kde` all operate on a single 1-D series at a time.
 
 ### Returns
 
-Returns a NumPy array with shape:
+By default (`return_fitted=False`):
+- A NumPy array with shape `(n_ensemble, n)` when `y` is 1-D, or `(n_ensemble, npts, n_series)` when `y` is 2-D.
+- Each ensemble member is `y + sampled_residuals`.
 
-    (n_ensemble, len(y))
+When `return_fitted=True`:
+- A tuple `(ensemble, fitted)` where `ensemble` has the shape above and `fitted` is the in-sample ARIMA fitted values.
+- `fitted` uses the same shape convention as `y`: 1-D `(npts_fit,)` or 2-D `(npts_fit, n_series)`.
+- When `fit_ts` is provided, `fitted` has the length of `fit_ts`, not `y` (they can differ).
 
 ---
 
@@ -503,27 +599,45 @@ This gives a simple default block length that increases with the size of the res
 
 ## Input Validation
 
-The module validates that input arrays are:
+The module uses two validation helpers:
 
-- one-dimensional
-- numeric
-- at least 10 samples long
-- free of NaN values
+### `_validate_array` (used by `generate_perturbations`)
 
-The validation helper is:
+Validates and coerces input to a 2-D float NumPy array of shape `(n, n_series)`. A 1-D input of shape `(n,)` is promoted to `(n, 1)`.
 
-    _validate_1d_array(
-        array,
-        name,
-    )
+    _validate_array(array, name)
 
-Invalid inputs raise clear exceptions.
+Checks:
+- `ndim` is 1 or 2 (3-D and higher raise an error).
+- `shape[0] >= 10` (at least 10 samples required).
+- No NaN values.
 
-Examples:
+Error messages:
 
-    ValueError: y must be a 1D array.
-    ValueError: y must contain at least 10 values.
-    ValueError: y must not contain NaN values.
+    ValueError: {name} must be a 1D or 2D array.
+    ValueError: {name} must contain at least 10 values.
+    ValueError: {name} must not contain NaN values.
+
+Used for: `y` and `fit_ts` in `generate_perturbations`.
+
+### `_validate_1d_array` (used by `fit_model`, plotting, and stats functions)
+
+Validates and coerces input to a 1-D float NumPy array.
+
+    _validate_1d_array(array, name)
+
+Checks:
+- `ndim` is exactly 1 (raises error for any other shape).
+- `len(array) >= 10` (at least 10 samples required).
+- No NaN values.
+
+Error messages:
+
+    ValueError: {name} must be a 1D array.
+    ValueError: {name} must contain at least 10 values.
+    ValueError: {name} must not contain NaN values.
+
+Used for: residuals in `characterize_residuals`; inputs to `plot_residual_diagnostics`, `compute_ensemble_stats`, `plot_ensemble`; and `y` in `fit_model`.
 
 ---
 
@@ -575,6 +689,13 @@ These plots help determine whether the residuals are:
 This plots the original signal together with selected ensemble members and
 returns the `matplotlib.figure.Figure` for further customisation.
 
+**Note:** `plot_ensemble` currently requires a 2-D ensemble of shape `(n_ensemble, len(y))`
+and a 1-D `y`. For multi-series ensembles from `generate_perturbations` (3-D output),
+call it per series:
+
+    for j in range(ensemble.shape[2]):
+        plot_ensemble(x, y[:, j], ensemble[:, :, j], title=f"Series {j}")
+
 ### Ensemble Statistics
 
     from perturbed_input import compute_ensemble_stats
@@ -593,6 +714,12 @@ Returns a dictionary with pointwise statistics at each time step:
         "q05": ...,   # 5th percentile
         "q95": ...,   # 95th percentile
     }
+
+**Note:** `compute_ensemble_stats` currently requires a 2-D ensemble of shape `(n_ensemble, len(y))`
+and a 1-D `y`. For multi-series ensembles, call it per series:
+
+    for j in range(ensemble.shape[2]):
+        stats = compute_ensemble_stats(x, y[:, j], ensemble[:, :, j])
 
 ---
 
@@ -680,7 +807,6 @@ Both calls will generate the same perturbation ensemble.
         ensemble=ensemble,
         n_show=50,
         title="Example Perturbed Ensemble",
-        show_stats=True,
         show_boxplot=False,
     )
 
@@ -722,11 +848,6 @@ Possible applications include:
 - engineering signal perturbation
 - environmental sensor data
 - temperature measurements
-- energy demand forecasting
-- sales and demand data
-- stock prices and financial indicators
-- economic indicators
-- medical or biological measurements over time
 - uncertainty quantification studies
 
 ---

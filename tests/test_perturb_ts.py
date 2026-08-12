@@ -244,3 +244,61 @@ def test_block_bootstrap_preserves_autocorrelation():
         ac_emp.append(np.corrcoef(s_e[:-1], s_e[1:])[0, 1])
 
     assert np.mean(ac_block) > np.mean(ac_emp)
+
+
+# ---------------------------------------------------------------------------
+# return_fitted option
+# ---------------------------------------------------------------------------
+
+
+def test_return_fitted_false_by_default():
+    """Without return_fitted=True, the return value should be a bare ndarray."""
+    y = make_ar1(n=100, seed=42)
+    result = generate_perturbations(y, n_ensemble=10, seed=42)
+    assert isinstance(result, np.ndarray)
+    assert result.shape == (10, len(y))
+
+
+def test_return_fitted_shape_1d():
+    """With return_fitted=True and 1D y, should return (ensemble, fitted) tuple."""
+    y = make_ar1(n=100, seed=42)
+    result = generate_perturbations(y, n_ensemble=10, return_fitted=True, seed=42)
+    assert isinstance(result, tuple)
+    assert len(result) == 2
+    ensemble, fitted = result
+    assert ensemble.shape == (10, len(y))
+    assert fitted.shape == (len(y),)
+
+
+def test_return_fitted_shape_2d():
+    """With return_fitted=True and 2D y, fitted should match (npts, n_series)."""
+    y1 = make_ar1(n=100, seed=1)
+    y2 = make_ar1(n=100, seed=2)
+    y = np.column_stack([y1, y2])
+    result = generate_perturbations(y, n_ensemble=10, return_fitted=True, seed=42)
+    assert isinstance(result, tuple)
+    assert len(result) == 2
+    ensemble, fitted = result
+    assert ensemble.shape == (10, y.shape[0], y.shape[1])
+    assert fitted.shape == (y.shape[0], y.shape[1])
+
+
+def test_return_fitted_matches_fit_model():
+    """Fitted values from generate_perturbations should match fit_model's output."""
+    y = make_ar1(n=100, seed=42)
+    fit = fit_model(y)
+    ensemble, fitted = generate_perturbations(
+        y, n_ensemble=5, fit=fit, return_fitted=True, seed=42
+    )
+    np.testing.assert_array_equal(fitted, fit["fitted"])
+
+
+def test_return_fitted_with_fit_ts_uses_fit_ts_length():
+    """When fit_ts is provided, fitted should match fit_ts's length, not y's."""
+    y = make_ar1(n=100, seed=42)
+    fit_ts = make_ar1(n=150, seed=100)
+    ensemble, fitted = generate_perturbations(
+        y, fit_ts=fit_ts, n_ensemble=5, return_fitted=True, seed=42
+    )
+    assert ensemble.shape == (5, len(y))
+    assert fitted.shape == (len(fit_ts),)  # fitted matches fit_ts, not y

@@ -21,7 +21,8 @@ def generate_perturbations(
     auto_arima_kwargs: Optional[dict[str, Any]] = None,
     kde_bandwidth: "float | str | None" = None,
     fit_ts: Optional[np.ndarray] = None,
-) -> np.ndarray:
+    return_fitted: bool = False,
+) -> "np.ndarray | tuple[np.ndarray, np.ndarray]":
     """
     Generate an ensemble of perturbed time series.
 
@@ -71,13 +72,25 @@ def generate_perturbations(
         structure should come from a separate (e.g. longer or historical)
         dataset. fit_ts may have a different length than y, but must have
         the same number of series. Cannot be used together with fit.
+    return_fitted : bool, optional
+        If True, return both the ensemble and the fitted ARIMA values as a
+        tuple (ensemble, fitted). If False (default), return only the
+        ensemble array. Fitted values use the same shape convention as y:
+        (npts_fit,) for 1D y, or (npts_fit, n_series) for 2D y. When fit_ts
+        is provided, fitted values match fit_ts's length, not y's.
 
     Returns
     -------
-    np.ndarray
-        Ensemble array. Shape (n_ensemble, n) when y is 1D, or
-        (n_ensemble, npts_y, n_series) when y is 2D. Each member is
-        y + sampled_residuals.
+    np.ndarray or tuple[np.ndarray, np.ndarray]
+        If return_fitted is False (default):
+            Ensemble array. Shape (n_ensemble, n) when y is 1D, or
+            (n_ensemble, npts_y, n_series) when y is 2D. Each member is
+            y + sampled_residuals.
+        If return_fitted is True:
+            Tuple (ensemble, fitted) where ensemble has the shape above and
+            fitted is the in-sample ARIMA fitted values (shape matching y's
+            convention, but length matching the actually-fit series: npts_y
+            if fit_ts is None, or npts_fit if fit_ts is provided).
 
     Notes
     -----
@@ -85,6 +98,10 @@ def generate_perturbations(
     start positions for a given ensemble member are shared across every
     series using 'block', so co-perturbed series stay time-aligned. Series
     remain independent across ensemble members.
+
+    When return_fitted=True and fit_ts is provided, the returned fitted
+    array's length matches fit_ts, not y. The caller must handle x-axis
+    alignment when plotting original y against fitted ARIMA values.
     """
     was_1d = np.asarray(y).ndim == 1
     y = _validate_array(y, "y")
@@ -129,6 +146,7 @@ def generate_perturbations(
     # This part is unavoidably a Python loop: pmdarima, the diagnostic
     # tests, and gaussian_kde all operate on a single 1D series.
     series_info = []
+    fitted_values = [] if return_fitted else None
     for j in range(n_series):
         y_j = y[:, j]
 
@@ -171,6 +189,9 @@ def generate_perturbations(
 
         series_info.append((y_j, residuals, series_method, series_block_length, fitted_kde))
 
+        if fitted_values is not None:
+            fitted_values.append(_source_fit["fitted"])
+
     # Generate the ensemble, vectorized across n_ensemble. Series sharing
     # method='block' also share their block start indices per member.
     ensemble = np.empty((n_ensemble, npts_y, n_series))
@@ -196,4 +217,13 @@ def generate_perturbations(
 
         ensemble[:, :, j] = y_j + sampled
 
-    return ensemble[..., 0] if was_1d else ensemble
+    if return_fitted:
+        # Stack fitted values the same way as ensemble: (npts_fit, n_series)
+        assert fitted_values is not None  # guaranteed by return_fitted flag
+        fitted_array = np.stack(fitted_values, axis=1)
+        # Squeeze trailing series axis if was_1d (to match ensemble's squeezing)
+        fitted_out = fitted_array[:, 0] if was_1d else fitted_array
+        ensemble_out = ensemble[..., 0] if was_1d else ensemble
+        return (ensemble_out, fitted_out)
+    else:
+        return ensemble[..., 0] if was_1d else ensemble

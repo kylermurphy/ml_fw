@@ -1,6 +1,8 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
+from matplotlib.axes import Axes
 from scipy.stats import norm, probplot
 from statsmodels.graphics.tsaplots import plot_acf
 from typing import Optional
@@ -125,11 +127,22 @@ def plot_ensemble(
     y: np.ndarray,
     ensemble: np.ndarray,
     n_show: int = 50,
-    title: str = "",
+    plot_mean: bool = False,
+    plot_median: bool = False,
     show_boxplot: bool = False,
-) -> Figure:
+    colormap: str = "plasma",
+    ax: Optional[Axes] = None,
+    figsize: Optional[tuple] = None,
+    xlabel: Optional[str] = None,
+    ylabel: Optional[str] = None,
+    legend: bool = True,
+) -> Axes:
     """
     Plot the original time series with ensemble perturbation realizations.
+
+    Ensemble members are drawn in colors from a matplotlib colormap; the
+    original series is highlighted in black. Optionally overlay ensemble
+    mean (red dashed) and/or median (orange dash-dot) lines.
 
     Parameters
     ----------
@@ -141,15 +154,35 @@ def plot_ensemble(
         Ensemble array with shape (n_ensemble, n).
     n_show : int, optional
         Number of ensemble members to display (capped at n_ensemble).
-    title : str, optional
-        Plot title.
+        Default is 50.
+    plot_mean : bool, optional
+        Whether to overlay ensemble mean as a red dashed line.
+        Default is False.
+    plot_median : bool, optional
+        Whether to overlay ensemble median as an orange dash-dot line.
+        Default is False.
     show_boxplot : bool, optional
-        Whether to also display a boxplot of the ensemble distribution.
+        Whether to also display a boxplot of the ensemble distribution
+        in a separate figure. Default is False.
+    colormap : str, optional
+        Matplotlib colormap name to color ensemble member lines.
+        Default is "plasma".
+    ax : matplotlib.axes.Axes, optional
+        Existing Axes to plot on. If None, a new figure is created.
+    figsize : tuple, optional
+        Figure size (width, height) in inches. Only used if ax is None.
+        Default is (16, 6).
+    xlabel : str, optional
+        X-axis label. If None, defaults to "Time Index".
+    ylabel : str, optional
+        Y-axis label. If None, defaults to "Value".
+    legend : bool, optional
+        Whether to show the legend. Default is True.
 
     Returns
     -------
-    matplotlib.figure.Figure
-        The ensemble line plot figure.
+    matplotlib.axes.Axes
+        The axes object containing the ensemble plot.
     """
     y = _validate_1d_array(y, "y")
     ensemble = np.asarray(ensemble)
@@ -162,36 +195,70 @@ def plot_ensemble(
     if x is None:
         x = np.arange(len(y))
     else:
-        x = np.asarray(x)
-        if x.ndim != 1:
+        # Handle pandas Series/DatetimeIndex input
+        if isinstance(x, (pd.Series, pd.DatetimeIndex)):
+            x = x.values if isinstance(x, pd.Series) else x.to_numpy()
+        else:
+            x = np.asarray(x)
+
+        if hasattr(x, 'ndim') and x.ndim != 1:
             raise ValueError("x must be a 1D array.")
         if len(x) != len(y):
             raise ValueError("len(x) must match len(y).")
 
     n_show = min(n_show, ensemble.shape[0])
 
-    fig, ax = plt.subplots(figsize=(16, 6))
+    # Create axes if not provided
+    if ax is None:
+        _, ax = plt.subplots(figsize=figsize or (16, 6))
 
+
+    # Get colormap for ensemble members
+    cmap = plt.get_cmap(colormap)
+    colors = cmap(np.linspace(0, 1, n_show))
+
+    # Plot ensemble members with colormap colors
     for i in range(n_show):
-        ax.plot(x, ensemble[i], color="steelblue", alpha=0.3, linewidth=0.8)
+        ax.plot(x, ensemble[i], color=colors[i], alpha=0.3, linewidth=0.8)
 
+    # Plot original series
     ax.plot(x, y, color="black", linewidth=2, label="Original")
-    ax.set_title(title)
-    ax.set_xlabel("Time Index")
-    ax.set_ylabel("Value")
+
+    # Optionally plot mean and/or median
+    if plot_mean or plot_median:
+        if plot_mean:
+            ax.plot(x, ensemble.mean(axis=0),
+                color="red", linestyle="--", linewidth=1,
+                label="Ensemble Mean"
+            )
+        if plot_median:
+            ax.plot(x, np.median(ensemble, axis=0),
+                color="orange", linestyle="-.", linewidth=1,
+                label="Ensemble Median"
+            )
+
+    # Set labels with defaults
+    ax.set_xlabel(xlabel or "Time Index")
+    ax.set_ylabel(ylabel or "Value")
     ax.tick_params(axis="x", rotation=45)
-    ax.legend()
-    fig.tight_layout()
-    plt.show()
 
+    # Add legend if requested
+    if legend:
+        ax.legend()
+
+    # Handle boxplot if requested
     if show_boxplot:
-        fig_bp, ax_bp = plt.subplots(figsize=(16, 6))
+        _, ax_bp = plt.subplots(figsize=figsize or (16, 6))
         ax_bp.boxplot(ensemble.T, showfliers=False)
-        ax_bp.set_title(f"Ensemble Box Plot {title}")
-        ax_bp.set_xlabel("Time Index")
-        ax_bp.set_ylabel("Value")
+        ax_bp.set_xlabel(xlabel or "Time Index")
+        ax_bp.set_ylabel(ylabel or "Value")
         ax_bp.tick_params(axis="x", rotation=45)
-        fig_bp.tight_layout()
-        plt.show()
 
-    return fig
+    # Refresh canvas in interactive environments
+    try:
+        ax.figure.canvas.draw()
+    except (AttributeError, RuntimeError):
+        # In non-interactive environments, this may not be available
+        pass
+
+    return ax

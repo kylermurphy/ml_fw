@@ -14,10 +14,12 @@ ensemble = generate_perturbations(
     seed=42,
 )
 
-plot_ensemble(
+ax = plot_ensemble(
     x=t,
     y=y,
     ensemble=ensemble,
     n_show=30,
-    title="Example Perturbed Time Series Ensemble",
+    plot_mean=True,
+    plot_median=True,
+    colormap="plasma",
 )

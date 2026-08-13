@@ -1,6 +1,6 @@
 # Perturbed Input Ensemble Modeling
 
-A standalone Python module for generating perturbed time series for ensemble modelling workflows using ARIMA residual resampling.
+A Python module for generating perturbed time series for ensemble modelling workflows using ARIMA residual resampling.
 
 The module fits an ARIMA model to an input time series (single or multiple series at once), extracts the model residuals, characterizes those residuals statistically, and resamples them to generate an ensemble of statistically plausible perturbed signals. When generating ensembles for co-perturbed series (e.g., correlated measurements from multiple instruments), series can share block-bootstrap start positions to stay time-aligned.
 
@@ -63,6 +63,8 @@ where:
 - `y_t` is the original input signal
 - `y_hat_t` is the fitted ARIMA signal
 - `e_t` is the residual error
+
+**Note on ARIMA burn-in:** ARIMA differencing (non-seasonal order `d` plus seasonal order `D` at period `m`) consumes the first `d + D*m` observations before the model can produce a real in-sample prediction. During this burn-in period, `fitted` is zero and the corresponding residuals are inflated (essentially equal to `y`) rather than genuine model error. To prevent these outliers from skewing diagnostics and ensemble generation, the first `d + D*m` residuals are automatically replaced with the mean of the remaining residuals by `fit_model()`. In the returned fitted model these values are replace with `np.nan`.
 
 Each perturbed ensemble member is generated as:
 
@@ -334,6 +336,8 @@ The function returns a dictionary containing:
 The ARIMA model is selected automatically using:
 
     pmdarima.auto_arima()
+
+**Burn-in Residual Correction:** The returned `"residuals"` have their first `d + D*m` values replaced with the mean of the remaining residuals, where `d` and `D*m` are the non-seasonal and seasonal differencing orders. This prevents inflated burn-in residuals from skewing diagnostics. If the differencing order consumes the entire series (burn-in length >= series length), `fit_model()` raises a `ValueError`.
 
 ---
 
@@ -676,25 +680,38 @@ These plots help determine whether the residuals are:
 ### Ensemble Plot
 
     from perturbed_input import plot_ensemble
+    import matplotlib.pyplot as plt
 
-    fig = plot_ensemble(
+    ax = plot_ensemble(
         x=None,
         y=data,
         ensemble=ensemble,
         n_show=50,
-        title="Perturbed Ensemble",
-        show_boxplot=False,
+        plot_mean=True,
+        plot_median=True,
+        colormap="plasma",
+        figsize=(16, 6),
     )
+    ax.set_title("Perturbed Ensemble")
+    plt.show()
 
-This plots the original signal together with selected ensemble members and
-returns the `matplotlib.figure.Figure` for further customisation.
+This plots the original signal together with selected ensemble members,
+optionally with ensemble mean and/or median overlays, and returns the
+`matplotlib.axes.Axes` for further customization.
 
-**Note:** `plot_ensemble` currently requires a 2-D ensemble of shape `(n_ensemble, len(y))`
+Ensemble members are colored using a matplotlib colormap (default `"plasma"`);
+the original series is highlighted in black. Use `plot_mean=True` and/or
+`plot_median=True` to overlay red dashed (mean) and/or orange dash-dot (median)
+lines.
+
+**Note:** `plot_ensemble` requires a 2-D ensemble of shape `(n_ensemble, len(y))`
 and a 1-D `y`. For multi-series ensembles from `generate_perturbations` (3-D output),
 call it per series:
 
     for j in range(ensemble.shape[2]):
-        plot_ensemble(x, y[:, j], ensemble[:, :, j], title=f"Series {j}")
+        ax = plot_ensemble(x, y[:, j], ensemble[:, :, j])
+        ax.set_title(f"Series {j}")
+        plt.show()
 
 ### Ensemble Statistics
 
@@ -801,14 +818,16 @@ Both calls will generate the same perturbation ensemble.
     )
 
 
-    plot_ensemble(
+    ax = plot_ensemble(
         x=t,
         y=data,
         ensemble=ensemble,
         n_show=50,
-        title="Example Perturbed Ensemble",
+        plot_mean=True,
+        colormap="plasma",
         show_boxplot=False,
     )
+    ax.set_title("Example Perturbed Ensemble")
 
 ---
 

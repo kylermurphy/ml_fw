@@ -6,6 +6,7 @@ with a focus on heliophysics, space-weather, and similar scientific domains.
 
 Modules:
 --------
+- data : Data loaders (e.g. NASA OMNI2 space-weather data)
 - data_io : Feature and target dataset creation, feature engineering
 - ml_mod : Model training and hyperparameter tuning
 - profile : Correlation analysis and feature profiling
@@ -23,6 +24,7 @@ See the README for detailed documentation and examples for each module.
 """
 
 # Make submodules easily accessible
+from . import data  # noqa: F401
 from . import data_io  # noqa: F401
 from . import ml_mod  # noqa: F401
 from . import profile  # noqa: F401
@@ -31,6 +33,7 @@ from . import plot  # noqa: F401
 from . import perturbed_input  # noqa: F401
 
 __all__ = [
+    "data",
     "data_io",
     "ml_mod",
     "profile",

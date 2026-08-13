@@ -3,6 +3,7 @@ import pytest
 from statsmodels.tsa.arima_process import ArmaProcess
 
 from ml_fw.perturbed_input import fit_model, characterize_residuals, generate_perturbations
+from ml_fw.perturbed_input.fit import _replace_burn_in
 from ml_fw.perturbed_input.sampling import _sample_block
 
 
@@ -32,6 +33,109 @@ def test_fit_model_residuals_sum_to_near_zero():
     y = make_ar1(n=300, phi=0.5)
     fit = fit_model(y)
     assert abs(np.mean(fit["residuals"])) < 0.5
+
+
+# ---------------------------------------------------------------------------
+# Burn-in residual correction
+# ---------------------------------------------------------------------------
+
+def test_replace_burn_in_no_burn_in():
+    """When n_burn=0, fitted and residuals should be unchanged."""
+    fitted = np.array([1.0, 2.0, 3.0, 4.0, 5.0])
+    residuals = np.array([0.1, 0.2, 0.3, 0.4, 0.5])
+    order = (1, 0, 0)  # d=0
+    seasonal_order = (0, 0, 0, 0)  # D=0, m=0
+
+    fitted_out, residuals_out = _replace_burn_in(fitted, residuals, order, seasonal_order)
+
+    np.testing.assert_array_equal(fitted_out, fitted)
+    np.testing.assert_array_equal(residuals_out, residuals)
+
+
+def test_replace_burn_in_with_burn_in():
+    """When n_burn > 0, the first n_burn values should be replaced."""
+    fitted = np.array([0.0, 1.0, 2.0, 3.0, 4.0, 5.0])
+    residuals = np.array([10.0, 0.5, 1.0, 2.0, 3.0, 4.0])
+    order = (1, 1, 0)  # d=1, so n_burn=1
+    seasonal_order = (0, 0, 0, 0)
+
+    fitted_out, residuals_out = _replace_burn_in(fitted, residuals, order, seasonal_order)
+
+    # First 1 fitted value should be replaced with nan
+    assert np.isnan(fitted_out[0])
+    # Rest of fitted should be unchanged
+    np.testing.assert_array_equal(fitted_out[1:], fitted[1:])
+
+    # First 1 residual value should be replaced with mean of [0.5,1,2,3,4]
+    expected_mean = np.mean(residuals[1:])
+    assert residuals_out[0] == expected_mean
+    # Rest of residuals should be unchanged
+    np.testing.assert_array_equal(residuals_out[1:], residuals[1:])
+
+
+def test_replace_burn_in_seasonal():
+    """Test with seasonal differencing: n_burn = d + D*m."""
+    fitted = np.array([0.0, 0.0, 0.0, 1.0, 2.0, 3.0, 4.0])
+    residuals = np.array([10.0, 20.0, 30.0, 1.0, 2.0, 3.0, 4.0])
+    order = (1, 1, 0)  # d=1
+    seasonal_order = (0, 1, 0, 2)  # D=1, m=2, so n_burn=1+1*2=3
+
+    fitted_out, residuals_out = _replace_burn_in(fitted, residuals, order, seasonal_order)
+
+    # First 3 fitted values should be nan
+    np.testing.assert_array_equal(np.isnan(fitted_out[:3]), [True, True, True])
+    # Rest of fitted should be unchanged
+    np.testing.assert_array_equal(fitted_out[3:], fitted[3:])
+
+    # First 3 residuals should be replaced with mean
+    expected_mean = np.mean(residuals[3:])
+    np.testing.assert_array_almost_equal(residuals_out[:3], expected_mean)
+    # Rest of residuals should be unchanged
+    np.testing.assert_array_equal(residuals_out[3:], residuals[3:])
+
+
+def test_replace_burn_in_too_large_raises():
+    """When burn-in length >= len(residuals), should raise ValueError."""
+    fitted = np.array([0.0, 0.0, 0.0, 0.0])
+    residuals = np.array([1.0, 2.0, 3.0, 4.0])
+    order = (1, 3, 0)  # d=3
+    seasonal_order = (0, 0, 0, 0)  # n_burn = 3, but len=4
+
+    with pytest.raises(ValueError, match="Burn-in length"):
+        _replace_burn_in(fitted, residuals, order, seasonal_order)
+
+
+def test_replace_burn_in_equal_length_raises():
+    """When burn-in length == len(residuals), should raise ValueError."""
+    fitted = np.array([0.0, 0.0, 0.0])
+    residuals = np.array([1.0, 2.0, 3.0])
+    order = (1, 3, 0)  # d=3, so n_burn=3
+    seasonal_order = (0, 0, 0, 0)
+
+    with pytest.raises(ValueError, match="Burn-in length"):
+        _replace_burn_in(fitted, residuals, order, seasonal_order)
+
+
+def test_fit_model_applies_burn_in_correction():
+    """Integration test: fit_model should apply burn-in correction automatically."""
+    # Create a non-stationary (differenced) series so auto_arima selects d=1
+    rng = np.random.default_rng(42)
+    white_noise = rng.normal(0, 1, 200)
+    y = np.cumsum(white_noise)  # Integrated white noise
+
+    fit = fit_model(y)
+    order = fit["order"]
+
+    # If d >= 1, the first d fitted values should be nan and residuals replaced
+    if order[1] > 0:
+        n_burn = order[1]
+        # The first n_burn fitted values should be nan
+        assert np.all(np.isnan(fit["fitted"][:n_burn]))
+        # The first n_burn residuals should all equal the mean of residuals[n_burn:]
+        expected_mean = np.mean(fit["residuals"][n_burn:])
+        np.testing.assert_array_almost_equal(
+            fit["residuals"][:n_burn], expected_mean
+        )
 
 
 # ---------------------------------------------------------------------------
